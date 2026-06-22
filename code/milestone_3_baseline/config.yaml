@@ -1,0 +1,77 @@
+# ===========================================================================
+#  config.yaml  —  Milestone 3 (Baseline): train a TopK SAE + naive steering
+#  FAITH-SAE  ·  author: Rajia Rani  ·  educational use only
+# ---------------------------------------------------------------------------
+#  WHAT IS THIS FILE?
+#  A "config" is just a list of named settings (numbers and words) kept OUTSIDE
+#  the code, so you can change an experiment WITHOUT editing any .py file.
+#  Analogy: the dials on a microwave. The microwave (the code) never changes;
+#  you only turn the dials (these values). Each step*.py reads this file.
+#
+#  Every value below is explained right where it appears. The defaults run on a
+#  laptop CPU in well under a minute, with nothing to download.
+# ===========================================================================
+
+seed: 0                  # Random-number seed. A "seed" fixes the dice so every
+                         # run produces the SAME numbers (reproducible). Change
+                         # it (e.g. to 1) to see a different-but-similar run.
+
+# ---- The synthetic activation bank (regenerated locally in step 1) --------
+# An "activation" is the list of numbers a neural network produces inside
+# itself when it looks at one input. Here we MAKE UP such numbers (synthetic)
+# so the milestone is fully offline. We plant ONE known "concept" direction so
+# we can later check the SAE rediscovers it.
+dim: 64                  # Length of each activation vector. Real CLIP ViT-B/16
+                         # uses 768; we use 64 so it trains in seconds.
+n_patches: 16            # How many activation vectors ("patches"/tokens) per
+                         # image. A real ViT splits an image into a grid of
+                         # patches; each patch makes one vector. 16 = a 4x4 grid.
+n_images: 512            # How many synthetic "images" go in the activation bank.
+                         # More images = a steadier signal for the SAE to learn.
+
+# ---- The TopK Sparse Autoencoder (what step 1 trains) ---------------------
+d_model: 64              # Must equal `dim`: the SAE reads/writes vectors of this
+                         # width. (The backbone width.)
+sae_dim: 256             # Dictionary size: how many "concept features" the SAE
+                         # may learn. We use MORE features than dims (256 > 64) —
+                         # this "overcomplete" choice lets each feature specialise
+                         # in one concept instead of cramming many together.
+sae_type: topk           # 'topk' = keep only the k biggest features per vector
+                         # (hard sparsity). 'l1' = a softer penalty. We use topk.
+topk_k: 8                # The "k" in TopK: keep the 8 largest features active per
+                         # activation, zero the rest. Smaller k = sparser = more
+                         # interpretable but harder to reconstruct.
+
+# ---- SAE training schedule -----------------------------------------------
+steps: 400               # How many gradient updates to train the SAE. A few
+                         # hundred is plenty for this toy bank on CPU.
+lr: 0.003                # Learning rate: the step size of each update. Too big =
+                         # unstable; too small = slow. 3e-3 is a safe middle.
+batch: 32                # How many bank rows (each a [n_patches, dim] image) the
+                         # SAE sees per update.
+
+# ---- Concept selection (step 2) ------------------------------------------
+# The paper notes only ~10-15% of SAE features steer reliably, so we SELECT a
+# few "clean" ones by a cleanliness score before steering.
+n_select: 5              # How many top-scoring concepts to keep as "testable".
+concept_select_thresh: 0.0   # A4 ablation knob: minimum cleanliness score to
+                             # accept a concept. 0.0 = accept all, then rank.
+
+# ---- Baseline steering + CFS (step 3) ------------------------------------
+# The BASELINE steerer is `naive_steer`: just add s * direction to the
+# activation, with NO projection onto the real-data manifold. This is the weak
+# number milestone 4's on-manifold method must beat.
+steer: naive_steer       # The steering method this milestone measures (baseline).
+steer_strength: 4.0      # "s": how hard we push the concept. The SAME s is used
+                         # for every method in the full study (matched strength),
+                         # so comparisons are fair.
+proj_rank: 16            # "r": on-manifold projection rank. UNUSED by naive_steer
+                         # (naive is the r -> infinity / no-projection case); kept
+                         # here only so the config shape matches milestone 4.
+
+# ---- Where artifacts are written -----------------------------------------
+out_dir: outputs                          # all results land here
+sae_ckpt: outputs/sae_topk.pt             # the trained SAE checkpoint (step 1)
+loss_png: outputs/sae_loss_curve.png      # reconstruction-loss curve (step 1)
+concepts_csv: outputs/selected_concepts.csv   # the chosen testable concepts (step 2)
+baseline_csv: outputs/baseline_cfs.csv    # the headline baseline CFS table (step 3)

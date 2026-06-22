@@ -1,0 +1,17 @@
+# Milestone 4 (Method: on-manifold steering) — ADDITIVE requirements only.
+#
+# The BASE requirements live in the project root:
+#   ../../requirements.txt   (torch, pyyaml, pytest, numpy)
+# Everything this milestone needs is already covered by that base PLUS:
+#   * scikit-learn  — used in step2 to estimate the on-manifold subspace U_r with
+#                     PCA (Principal Component Analysis). NumPy/torch could do the
+#                     same SVD, but sklearn's PCA makes the "find the main
+#                     directions" idea explicit and readable.
+#   * matplotlib    — used in step5 to draw outputs/method_compare.png.
+#
+# On the provided /usr/bin/python3, torch 2.8, numpy, pyyaml, scikit-learn, and
+# matplotlib are all preinstalled, so you typically need to install NOTHING.
+#
+# If you are on a fresh machine, install the base first, then these lines:
+scikit-learn>=1.3   # PCA of the real-image activation bank -> U_r (step2)
+matplotlib>=3.5     # renders outputs/method_compare.png (step5)

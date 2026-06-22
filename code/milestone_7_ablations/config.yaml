@@ -1,0 +1,125 @@
+# =============================================================================
+# config.yaml  —  Milestone 7 (Ablations A1-A5) of FAITH-SAE
+# Author: Rajia Rani
+#
+# WHAT THIS FILE IS
+# -----------------
+# A config file is just a list of named settings (a "knobs sheet") the code reads
+# at startup, so you can change behaviour WITHOUT editing Python. Analogy: the
+# dials on an oven. The recipe (the .py files) stays the same; you only turn the
+# dials here. Tiny example: set `topk_k: 8` here and the BASELINE SAE keeps the 8
+# biggest features ON at a time.
+#
+# WHAT AN ABLATION USES THIS FILE FOR
+# -----------------------------------
+# An ablation = "turn exactly ONE dial, leave every other dial fixed, and measure
+# what changes" (like changing one ingredient in a recipe to find what it does).
+# The settings below are the FIXED baseline. Each ablation A1..A5 takes this
+# baseline, OVERRIDES its one knob across a small SWEEP of values, RE-MEASURES the
+# Causal Faithfulness Score (CFS) for each value from the data, and records the
+# curve. The `a*_*` lists near the bottom are the values each ablation sweeps.
+#
+# GOLDEN RULE: every CFS number is MEASURED (Spearman + sklearn probes + Cohen's-d
+# effect size), never looked up. Measuring how CFS moves when one knob turns is
+# the entire point of an ablation.
+# =============================================================================
+
+seed: 0                  # Random seed = the starting number for the random-number
+                         # generator. Fixing it makes every run reproducible (same
+                         # dice every time). seed 0 vs 1 = two repeatable worlds.
+
+# ---- Activation shape (the synthetic "real-image" notes) -------------------
+dim: 64                  # Width of one activation vector (numbers per image-patch).
+                         # Real CLIP ViT-B/16 uses 768; we use 64 so it runs
+                         # instantly on a laptop CPU.
+d_model: 64              # = dim. The backbone's internal width. Kept equal to dim.
+n_patches: 16            # How many "patches" (little tiles) per image. A real ViT
+                         # cuts an image into a grid of patches; here it is just the
+                         # number of activation vectors the harness expects.
+bank_size: 2000          # How many labelled activations in the bank we probe + steer.
+                         # Bigger = steadier estimates; 2000 is fast and stable.
+
+# ---- The concept bank (target + off-target concepts) -----------------------
+# We plant SEVERAL named concepts. Concept 0 is the steering TARGET; the rest are
+# OFF-TARGET watchers used to measure SPECIFICITY (only the target should move).
+n_concepts: 4            # how many concepts we plant and probe (1 target + 3 off).
+target_concept: 0        # which planted concept we steer (the others are off-target).
+concept_strength: 3.0    # how strongly a present concept is injected (signal size).
+noise_off_manifold: 1.0  # background ON-SHEET variation scale (the "everything else"
+                         # the model also represents); a smaller off-sheet wobble is
+                         # added on top so real data is not perfectly flat.
+true_manifold_rank: 8    # the planted SHEET dimension: real activations (and all
+                         # concept directions) live on an 8-D sheet inside the 64-D
+                         # space. on-manifold steering projects onto this sheet; the
+                         # other 56 directions are the OFF-sheet region a naive edit
+                         # drifts into (causing specificity leakage).
+
+# ---- The on-manifold subspace (reused idea from milestone 4) ---------------
+manifold_rank: 8         # r = how many estimated PCA directions on-manifold keeps.
+                         # Set to the true sheet rank (8) so the projection cleanly
+                         # KEEPS the whole real-image sheet and DROPS the off-sheet
+                         # region a naive edit drifts into. This is the A3 knob.
+proj_rank: 8             # alias read by src/blocks onmanifold_steer (kept equal).
+
+# ---- Sparse Autoencoder (SAE) baseline -------------------------------------
+sae_dim: 128             # Size of the SAE "dictionary" = how many concept switches
+                         # the SAE has. Larger than dim (over-complete).
+sae_type: topk           # baseline SAE family: 'topk' (keep the k biggest switches)
+                         # or 'l1' (penalise the sum of switch sizes). A1 ablates this.
+topk_k: 8                # k = how many switches may be ON at once (the sparsity).
+                         # A2 ablates this.
+l1_coeff: 0.001          # L1 penalty weight used ONLY when sae_type == 'l1' (A1).
+                         # Bigger -> sparser code but worse reconstruction.
+
+# ---- The knob sweep (the heart of MONOTONICITY) ----------------------------
+steer_strength: 4.0      # s_max = the FULL knob value. SAME for every method/run.
+steer: onmanifold_steer  # the model's DEFAULT steerer (used only when training the
+                         # toy SAE; each ablation builds the steerer it needs by name,
+                         # so this default never biases a comparison).
+n_knob_steps: 6          # how many knob values to read between 0 and s_max
+                         # (e.g. 6 -> s = 0.0, 0.8, 1.6, 2.4, 3.2, 4.0).
+cohen_d_ample: 4.0       # SUFFICIENCY maps a Cohen's-d effect size of this size to
+                         # 1.0 (d ~ 4 standard deviations apart is "ample").
+
+# ---- SAE training budget (kept tiny for the offline run) -------------------
+steps: 60                # gradient steps to train each toy SAE. Equal for every
+                         # ablation value (equal budget). Raise for sharper results.
+
+# =============================================================================
+# THE FIVE ABLATIONS — each turns ONE knob across a SWEEP, holding all else fixed
+# (names + intent match DESIGN_BRIEF.md section 10, A1-A5).
+# =============================================================================
+
+# A1 — SAE TYPE: TopK vs L1 (vanilla) SAE. Effect on clean magnitudes and CFS.
+a1_sae_types: [topk, l1]
+
+# A2 — TopK k (sparsity level) sweep: how sparsity trades interpretability vs
+#      faithfulness. CFS per k. (k = how many SAE features may be ON at once.)
+a2_topk_ks: [1, 2, 4, 8, 16, 32]
+
+# A3 — Manifold-projection rank r sweep (the CORE knob): low r over-constrains
+#      (the effect dies), high r lets the edit drift off-manifold; locate the knee.
+a3_proj_ranks: [1, 2, 4, 8, 16, 32, 64]
+
+# A4 — Concept-selection interpretability threshold: how strict the "well-defined
+#      concept" filter is. We measure the RELIABLE-concept fraction (the field's
+#      ~10-15% tail) and the mean CFS of the concepts that survive each threshold.
+a4_select_thresholds: [0.0, 0.2, 0.4, 0.6, 0.8]
+
+# A5 — Backbone layer & token choice: which layer, and patch-vs-CLS tokens, for
+#      SAE training and steering. CFS per choice. (Synthetic stand-ins: an
+#      "early"/"late" layer = a thicker/cleaner concept sheet; CLS = a pooled
+#      single-vector readout, patch = the per-patch readout.)
+a5_layer_tokens:
+  - {layer: early, token: patch}
+  - {layer: early, token: cls}
+  - {layer: late,  token: patch}
+  - {layer: late,  token: cls}
+
+# Which steerer each ablation measures CFS for. on-manifold is OURS; we keep naive
+# alongside as the off-manifold reference so each panel shows the gap.
+ablation_variants: [onmanifold_steer, naive_steer]
+
+# ---- Where to write results ------------------------------------------------
+output_csv: "outputs/ablations.csv"   # ablation_id, knob_value, variant, cfs, diagnostic
+output_png: "outputs/ablations.png"   # one panel per ablation: CFS vs knob

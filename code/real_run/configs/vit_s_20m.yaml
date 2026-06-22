@@ -1,0 +1,82 @@
+# =============================================================================
+# vit_s_20m.yaml  --  FAITH-SAE real run  ·  SMALL backbone (ViT-S, ~22M params).
+# FAITH-SAE: Are SAE concept directions in vision models causally faithful under
+#            distribution shift?
+# Author: Rajia Rani  ()
+#
+# The smallest rung of the MODEL-SIZE axis. Standard SUPERVISED timm ViT-S/16
+# (~22M params, width d=384, 12 blocks, 196 patch tokens @224px). One of three
+# configs (S/B/L) the model-size sweep runs so faithfulness can be plotted vs
+# model size as well as vs domain shift. Same shared schema as the other configs;
+# only the backbone + dims change.
+# -----------------------------------------------------------------------------
+# For research and educational purposes only.
+# =============================================================================
+
+# --- Backbone: a FROZEN supervised timm ViT-S ---------------------------------
+# REAL RUN: loaded via timm.create_model(name, pretrained=True, num_classes=0),
+# frozen + eval + no-grad, with a forward hook on model.blocks[layer] capturing
+# the patch tokens (CLS dropped). framework: timm selects the timm path.
+backbone:
+  framework: timm                 # timm (default) | open_clip
+  name: vit_small_patch16_224     # ~22M params, width 384, 12 blocks.
+                                  # NOTE: swap `name` to YOUR exact model string
+                                  # if this doesn't match how you load your ViT
+                                  # (e.g. vit_small_patch16_224.augreg_in21k_ft_in1k).
+  pretrained: true                # use the supervised pretrained weights
+  layer: 8                        # index into model.blocks (late-middle of 12)
+  token_type: patch               # patch | cls  (A5 ablation; patch = grid tokens)
+  image_size: 224
+  device: cuda
+
+# --- Data: the student's domain-shift ladder ----------------------------------
+# in1k = ImageNet-1k train (ALREADY on the cluster); in100 = a 100-class IN-1k
+# subset (filtered by in100_classes.txt); food101 / cifar100 download via
+# torchvision (small). 01_stage_data.sh / cluster_env.sh wire these paths in.
+data:
+  imagenet_train_dir: /path/already/on/cluster/imagenet/train
+  in100_classes_file: ./in100_classes.txt   # the 100 wnids that define IN-100
+  data_dir: ./data                            # torchvision downloads Food101/CIFAR here
+  batch_size: 512           # ViT-S is light -> big image batch fits
+  num_workers: 8
+  max_images: null          # null = all; set an int to cap (debug / partial runs)
+
+# --- SAE: TopK sparse autoencoder over the cached patch activations -----------
+sae:
+  d_in: 384                 # = ViT-S width
+  expansion: 32             # n_features = 32 * 384 = 12288 dictionary atoms
+  k: 32                     # TopK sparsity (A2 ablation sweeps this)
+  normalize: unit_meansquare
+  lr: 4.0e-4
+  warmup: 1000
+  token_budget: 150_000_000   # ~150M tokens (196 tokens/img -> ~0.77M img-passes)
+  batch_tokens: 8192
+  aux_k: 256
+  dead_window: 10_000_000
+  ckpt_every: 5000
+
+steering:
+  strength_grid: [0, 0.5, 1, 2, 4]
+  proj_rank_r: 192          # scaled to the smaller width
+  bank_tokens: 2_000_000
+
+cfs:
+  n_probe_classes: 50
+  bootstrap_n: 2000
+
+# --- OOD ladder: the student's datasets ordered by shift strength -------------
+#   in1k (in-distribution, also the SAE-training source)
+#   in100 (mild shift; a 100-class subset of ImageNet)
+#   food101 (domain shift)
+#   cifar100 (strong domain + resolution shift; 32x32 upsampled to 224)
+ood:
+  levels: [in1k, in100, food101, cifar100]
+  usability_floor: 0.5
+
+paths:
+  cache_dir: ./cache_vit_s
+  out_dir: ./outputs_vit_s
+  sae_ckpt: ./outputs_vit_s/sae.safetensors
+  manifold_basis: ./outputs_vit_s/U_r.npy
+
+seed: 0

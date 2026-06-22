@@ -1,0 +1,19 @@
+# Milestone 8 (Analysis: bootstrap CIs, figures, findings) — ADDITIVE only.
+#
+# The BASE requirements live in the project root:
+#   ../../requirements.txt   (torch, pyyaml, pytest, numpy)
+# Everything this milestone needs is already covered by that base PLUS:
+#   * numpy       — the bootstrap resampling, percentiles, and array math
+#                   (already a base dependency, listed here for clarity).
+#   * matplotlib  — renders the two PNGs in step3 (fig1_cfs_ood_sweep.png and
+#                   fig7_by_method_bar.png), matching paper/figures/make_figures.py.
+#
+# We deliberately do NOT use scipy: the Spearman correlation (monotonicity) is
+# computed as Pearson-on-ranks inside the step scripts, so the only NEW thing on
+# top of the base is matplotlib.
+#
+# On the provided /usr/bin/python3, torch 2.8, numpy, pyyaml, scikit-learn, and
+# matplotlib are all preinstalled, so you typically need to install NOTHING.
+#
+# If you are on a fresh machine, install the base first, then this line:
+matplotlib>=3.5     # renders fig1_cfs_ood_sweep.png and fig7_by_method_bar.png (step3)

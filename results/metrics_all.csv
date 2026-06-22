@@ -1,0 +1,5 @@
+variant,params,final_loss,recon,monotonicity,specificity,sufficiency,offmanifold_residual,cfs,cfs_empirical
+naive_steer,24896,0.0199,0.0189,1.0,0.9879,1.0,0.75,0.6121,0.9959
+clamp_steer,24896,0.0199,0.0189,1.0,0.9879,1.0,0.75,0.5487,0.9959
+onmanifold_steer,24896,0.0199,0.0189,1.0,0.5588,1.0,0.0,0.8981,0.7917
+random_steer,24896,0.0199,0.0189,0.0,0.8023,1.0,0.75,0.15,0.0

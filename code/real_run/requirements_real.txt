@@ -1,0 +1,61 @@
+# =============================================================================
+# requirements_real.txt  --  FAITH-SAE  code/real_run/  (the PUBLICATION run)
+# Author: Rajia Rani  ()
+#
+# This pins the dependency set for the REAL, GPU-scale run that produces the
+# publishable numbers (CLIP ViT-L/14 + ImageNet-1k + the OOD ladder). It is the
+# scaled counterpart of the project-root requirements.txt (the toy smoke path).
+#
+# -----------------------------------------------------------------------------
+# TWO PROFILES — read this before installing
+# -----------------------------------------------------------------------------
+#   (A) SMOKE  (this build machine, CPU, NO GPU, NO open_clip):
+#       Every entry script here has a `--smoke` flag that runs a tiny CPU path on
+#       synthetic-but-real-SHAPED tensors. It needs ONLY the "core" block below,
+#       all of which already ships with /usr/bin/python3 on this machine — so you
+#       can self-test the whole pipeline today with ZERO installs:
+#           /usr/bin/python3 run_all_real.sh ... (or each *.py --smoke)
+#       In particular open_clip is GUARDED by try/except in data_real.py, so every
+#       module imports cleanly on CPU without it.
+#
+#   (B) REAL  (a single A100/H100 80GB box):
+#       Install EVERYTHING below into a fresh venv/conda env. The "real-only"
+#       block (open_clip_torch, datasets, webdataset, wandb) pulls large model
+#       weights and is the part the smoke path never touches.
+#           python -m venv .venv && . .venv/bin/activate
+#           pip install -r requirements_real.txt
+#       See RUN_AT_SCALE.md for the matching hardware / dataset / time budget.
+# =============================================================================
+
+# ---- core: numerical + I/O (needed by BOTH smoke and real) ------------------
+# torch is the backbone of everything (SAE training, SVD manifold basis, AMP).
+# Pin >=2.2 for stable torch.linalg.svd + bf16 autocast on Ampere/Hopper.
+torch>=2.2
+torchvision>=0.17        # ImageFolder / ImageNet datasets + transforms
+numpy>=1.24              # activation shards (float16), all array math
+scipy>=1.10              # Spearman (monotonicity), bootstrap stats
+scikit-learn>=1.3        # linear probes + TCAV-style supervised concept directions
+pandas>=1.5              # results tables -> outputs/*.csv
+matplotlib>=3.5          # the 9-figure manifest (fig1_cfs_ood_sweep.png, ...)
+pyyaml>=6.0              # load_real_config(path) reads the YAML config schema
+tqdm>=4.65               # progress bars over the 300M-token activation stream
+safetensors>=0.4         # save/load the trained SAE (outputs/sae.safetensors)
+einops>=0.7              # readable [seq,batch,width] <-> [batch,seq,width] reshapes
+
+# ---- real-only: model + data + logging (do NOT install for the smoke path) --
+# These are heavy and are the ONLY reason a GPU box is needed. The smoke path
+# imports every module WITHOUT them (timm / open_clip are try/except-guarded).
+timm>=0.9                # DEFAULT backbone: supervised timm ViT-S/B/L (the student's run)
+torchvision>=0.16        # ImageFolder (in1k/in100) + Food101/CIFAR100 download datasets
+open_clip_torch>=2.24    # OPTIONAL: the legacy CLIP backbone (backbone.framework: open_clip)
+webdataset>=0.2          # stream ImageNet-1k shards (avoid 600GB on-disk acts)
+wandb>=0.16              # OPTIONAL experiment tracking for the long SAE train run
+
+# -----------------------------------------------------------------------------
+# Datasets (the student's domain-shift ladder; see RUN_AT_SCALE.md "Datasets"):
+#   in1k   = ImageNet-1k train  -- ALREADY on the cluster; NOT a pip/download dep
+#            (also backs in100, a 100-class subset via in100_classes.txt).
+#   food101 / cifar100 -- torchvision downloads these itself (download=True), small.
+# ImageNet must be staged manually; torchvision reads it from cfg.data.* paths.
+# -----------------------------------------------------------------------------
+# For research and educational purposes only.

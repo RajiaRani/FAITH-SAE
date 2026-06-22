@@ -1,0 +1,87 @@
+# ==========================================================================
+# config.yaml  --  Milestone 2: the DATA pipeline (FAITH-SAE)
+# Author: Rajia Rani  ()
+#
+# This single file holds EVERY number the milestone uses. Edit it instead of
+# hunting through the code. Every key is explained inline; if a word is new to
+# you, the README's "Concepts from zero" section defines it from scratch.
+# ==========================================================================
+
+# --------------------------------------------------------------------------
+# Reproducibility
+# --------------------------------------------------------------------------
+seed: 0                  # fixes every random draw so two runs are byte-identical.
+
+# --------------------------------------------------------------------------
+# Shape of the SYNTHETIC activation bank (the default, offline path).
+# These numbers are chosen to EXACTLY MATCH real CLIP ViT-B/16 patch tokens,
+# so code written against this bank works unchanged on real activations later.
+#
+#   CLIP ViT-B/16 on a 224x224 image:
+#     - splits the image into 16x16-pixel patches  -> 14 x 14 = 196 patches
+#     - prepends 1 special CLS ("summary") token   -> 197 tokens total
+#     - each token is a vector of width             -> 768 numbers
+#   => one image becomes a tensor of shape [197, 768].
+# --------------------------------------------------------------------------
+n_images: 200            # how many fake "images" to synthesize (rows of the bank).
+n_tokens: 197            # tokens per image: 196 patch tokens + 1 CLS token.
+n_patches: 196           # patch tokens only (the SAE's real training data).
+dim: 768                 # activation width = CLIP ViT-B/16 hidden size.
+
+# --------------------------------------------------------------------------
+# The synthetic "manifold" knobs (what makes the fake bank realistic).
+# Real activations do NOT fill all 768 dimensions equally; they cluster on a
+# lower-dimensional "manifold" (a thin curved sheet inside the 768-D box).
+# We imitate that with a low-rank core so PCA/EDA behave like the real thing.
+# --------------------------------------------------------------------------
+manifold_rank: 32        # how many dims carry the real signal (the rest is faint noise).
+manifold_scale: 5.0      # overall magnitude of the on-manifold signal (dominates noise).
+noise_scale: 0.05        # tiny off-manifold noise (so nothing is perfectly flat).
+
+# --------------------------------------------------------------------------
+# Planted CONCEPTS. A "concept" is a single direction in the 768-D space whose
+# strength means something human (e.g. "stripes-ness"). We plant a couple so
+# later milestones can check a steer actually moves the concept it claims to.
+# --------------------------------------------------------------------------
+n_concepts: 2            # number of planted concept directions.
+concept_strength: 1.5    # how strongly each concept shows up when "present".
+concept_prevalence: 0.5  # fraction of images in which a concept is present.
+
+# --------------------------------------------------------------------------
+# OOD (out-of-distribution) shift knob.
+# 0.0 = a CLEAN in-distribution bank (like ImageNet-val).
+# > 0  = simulate a distribution shift (renditions/sketch/corruption/ObjectNet)
+#        by rotating + rescaling + adding off-manifold energy. The EDA prints a
+#        side-by-side of a clean bank vs a shifted bank so you SEE what OOD does.
+# --------------------------------------------------------------------------
+ood_shift: 0.0           # default bank is clean. The EDA also builds a shifted twin.
+ood_demo_shift: 0.8      # the shift level used for the clean-vs-OOD comparison.
+
+# --------------------------------------------------------------------------
+# EDA settings (exploratory data analysis = "look before you model").
+# --------------------------------------------------------------------------
+pca_components: 2        # we project to 2-D so a scatter plot is drawable.
+sparsity_eps: 0.10       # |value| below this counts as "≈ zero" for sparsity %.
+hist_bins: 40            # resolution of the per-dimension variance histogram.
+
+# --------------------------------------------------------------------------
+# Output locations (relative to this milestone folder).
+# --------------------------------------------------------------------------
+out_dir: "outputs"
+activations_npz: "outputs/activations.npz"   # the saved activation bank.
+eda_summary_csv: "outputs/eda_summary.csv"   # the per-dimension EDA table.
+fig_eda: "outputs/eda_overview.png"          # the multi-panel EDA figure.
+fig_ood: "outputs/ood_shift.png"             # clean-vs-OOD PCA comparison.
+
+# --------------------------------------------------------------------------
+# REAL RUN (M2) settings -- READ ONLY, not used by the default offline path.
+# These document the real CLIP pipeline so the learner can switch over later.
+# Do NOT install open_clip or download datasets to run this milestone today.
+# --------------------------------------------------------------------------
+real_run:
+  clip_model: "ViT-B-16"          # open_clip architecture name.
+  clip_pretrained: "openai"       # which pretrained weights to load.
+  backbone_layer: -2              # which transformer block to tap (A5 ablation).
+  token_type: "patch"            # "patch" (196 tokens, SAE data) or "cls" (1 token).
+  image_size: 224                 # CLIP ViT-B/16 input resolution.
+  imagenet_val_dir: "/path/to/imagenet/val"   # fill in for the real run.

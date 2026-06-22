@@ -1,0 +1,110 @@
+# =============================================================================
+# vit_l14.yaml  --  THE REAL-SCALE FAITH-SAE RUN (the ~307M-parameter backbone).
+# FAITH-SAE: Are SAE concept directions in vision models causally faithful under
+#            distribution shift?
+# Author: Rajia Rani  ()
+#
+# This is the headline configuration a student executes on a single A100/H100 to
+# produce the publishable numbers (clean-CFS, the OOD CFS-vs-severity curve, the
+# on-manifold-vs-naive comparison). Every module in real_run/ reads ONE of these
+# YAMLs through `load_real_config(path)` in data_real.py, so changing scale is a
+# one-file edit. `smoke.yaml` is the tiny CPU twin of this file.
+#
+# COMPUTE BUDGET (rough, single H100): activation extraction over ImageNet-1k
+# train (~1.28M imgs, 256 patch tokens each) ~= 6-10 GPU-h; TopK-SAE training on
+# ~300M tokens ~= 20-40 GPU-h; manifold basis + CFS + OOD sweep ~= 8-20 GPU-h.
+# Total lands in the 40-120 GPU-hour envelope from the prospectus.
+# -----------------------------------------------------------------------------
+# For research and educational purposes only.
+# =============================================================================
+
+# --- Backbone: the FROZEN vision encoder we interpret -------------------------
+# CLIP ViT-L/14, LAION-2B weights, via open_clip. ~307M params, residual-stream
+# width d=1024, 24 transformer blocks, 16x16=256 patch tokens at 224px (the CLS
+# token is dropped during extraction, so we keep exactly 256 tokens/image).
+# We hook resblock `layer` (0-indexed) and read its RESIDUAL-STREAM OUTPUT -- the
+# representation the SAE is trained to reconstruct. Layer 22 (of 24) is late
+# enough to carry abstract concepts but before the final-norm/projection head.
+backbone:
+  name: ViT-L-14
+  pretrained: laion2b_s32b_b82k
+  layer: 22                # index into model.visual.transformer.resblocks
+  token_type: patch        # patch | cls  (A5 ablation; patch = the 256 grid tokens)
+  image_size: 224
+  device: cuda
+
+# --- Data: ImageNet-1k for SAE training; the OOD ladder for the sweep ---------
+# DOWNLOAD SOURCES + SIZES (fill the *_dir paths in for your machine):
+#   imagenet_train_dir  ImageNet-1k train, 1,281,167 imgs / 1000 classes, ~150 GB
+#                       https://www.image-net.org/  (ILSVRC2012). ImageFolder layout:
+#                       <root>/n01440764/*.JPEG  (one subdir per WordNet class id).
+#   imagenet_r_dir      ImageNet-R, 30,000 renditions / 200 classes, ~2 GB
+#                       https://github.com/hendrycks/imagenet-r  (Hendrycks 2020).
+#                       Layout: <root>/n01443537/*.jpg.
+#   imagenet_sketch_dir ImageNet-Sketch, 50,889 sketches / 1000 classes, ~7 GB
+#                       https://github.com/HaohanWang/ImageNet-Sketch (Wang 2019).
+#                       Layout: <root>/n01440764/*.JPEG.
+#   imagenet_c_dir      ImageNet-C, corrupted val, 15 corruptions x 5 severities,
+#                       ~100 GB total https://github.com/hendrycks/robustness
+#                       (Hendrycks & Dietterich 2019). Layout (corruption-folder):
+#                       <root>/<corruption>/<severity 1..5>/n01440764/*.JPEG .
+#   objectnet_dir       ObjectNet, 50,000 real-world imgs / 313 classes (113 map
+#                       to ImageNet), ~30 GB https://objectnet.dev/ (Barbu 2019).
+#                       Layout: <root>/images/<class_name>/*.png  (see data_real.py
+#                       for the ObjectNet->ImageNet class remap note).
+data:
+  imagenet_train_dir: /data/imagenet/train
+  ood:
+    imagenet_r_dir: /data/imagenet-r
+    imagenet_sketch_dir: /data/imagenet-sketch
+    imagenet_c_dir: /data/imagenet-c
+    objectnet_dir: /data/objectnet
+  batch_size: 256          # images per forward pass (fits L/14 on an 80GB card)
+  num_workers: 8           # DataLoader workers for JPEG decode + preprocess
+  max_images: null         # null = all; set an int to cap (debug / partial runs)
+
+# --- SAE: TopK sparse autoencoder over the cached patch activations -----------
+# n_features = expansion * d_in = 32 * 1024 = 32768 dictionary atoms.
+# k=32 active atoms/token (Gao et al. 2024 TopK). normalize=unit_meansquare
+# rescales each activation vector to unit RMS so the recon loss is scale-free.
+# token_budget = how many patch-token activations to stream through training.
+sae:
+  d_in: 1024               # = backbone width (ViT-L/14)
+  expansion: 32            # n_features = expansion * d_in (overcomplete dict)
+  k: 32                    # TopK sparsity (A2 ablation sweeps this)
+  normalize: unit_meansquare
+  lr: 4.0e-4
+  warmup: 1000             # linear LR warmup steps
+  token_budget: 300_000_000   # ~300M tokens (~1.17M imgs x 256 tokens) of training
+  batch_tokens: 8192       # tokens per optimizer step
+  aux_k: 256               # AuxK: dead atoms reconstruct the residual (Gao 2024)
+  dead_window: 10_000_000  # a feature unused over this many tokens = "dead"
+  ckpt_every: 5000         # checkpoint cadence (optimizer steps)
+
+# --- Steering: the matched-strength grid + on-manifold projection -------------
+# strength_grid = the knob `s` swept to measure monotonicity; proj_rank_r = the
+# top-r real-image subspace P_M = U_r U_r^T (A3 core knob). bank_tokens = how many
+# real activations to estimate U_r from (SVD of a 2M x 1024 centered bank).
+steering:
+  strength_grid: [0, 0.5, 1, 2, 4]
+  proj_rank_r: 512
+  bank_tokens: 2_000_000
+
+# --- CFS probe: classes + bootstrap ------------------------------------------
+cfs:
+  n_probe_classes: 50      # off-target linear probes for the specificity term
+  bootstrap_n: 2000        # bootstrap resamples for per-concept CFS CIs
+
+# --- OOD ladder: the shift levels of the headline sweep -----------------------
+ood:
+  levels: [clean, imagenet_r, imagenet_sketch, imagenet_c, objectnet]
+  severities: [1, 2, 3, 4, 5]   # ImageNet-C corruption-severity dial
+
+# --- Paths: caches + outputs --------------------------------------------------
+paths:
+  cache_dir: ./cache
+  out_dir: ./outputs
+  sae_ckpt: ./outputs/sae.safetensors
+  manifold_basis: ./outputs/U_r.npy
+
+seed: 0

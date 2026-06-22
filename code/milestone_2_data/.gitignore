@@ -1,0 +1,6 @@
+# Generated EDA artifacts (large; reproducible via the two step scripts).
+# Keep the folder in git via .gitkeep, but ignore the heavy outputs.
+outputs/*
+!outputs/.gitkeep
+__pycache__/
+*.pyc

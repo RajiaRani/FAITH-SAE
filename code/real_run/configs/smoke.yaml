@@ -1,0 +1,73 @@
+# =============================================================================
+# smoke.yaml  --  TINY CPU TWIN of the real FAITH-SAE run.
+# Author: Rajia Rani  ()
+#
+# Same SCHEMA as vit_l14.yaml so every module's `--smoke` path exercises the
+# exact same code, but the shapes are tiny and the data paths are unused: the
+# smoke path FABRICATES synthetic-but-real-SHAPED activation shards on CPU (no
+# open_clip, no GPU, no dataset download). Use this for the offline integration
+# self-test and CI. d_in=64 stands in for the 768/1024/1280 real widths.
+# -----------------------------------------------------------------------------
+# For research and educational purposes only.
+# =============================================================================
+
+backbone:
+  name: ViT-B-16          # name only matters if open_clip is actually loaded
+  pretrained: laion2b_s34b_b88k
+  layer: 2                # tiny: a low block index (the synthetic backbone is 1 hook)
+  token_type: patch
+  image_size: 224
+  device: cpu             # smoke runs on CPU
+
+# Paths are intentionally unreal: the smoke extractor fabricates shards and never
+# touches these directories. They exist only so the schema validates.
+data:
+  imagenet_train_dir: ./_smoke_unused/imagenet/train
+  ood:
+    imagenet_r_dir: ./_smoke_unused/imagenet-r
+    imagenet_sketch_dir: ./_smoke_unused/imagenet-sketch
+    imagenet_c_dir: ./_smoke_unused/imagenet-c
+    objectnet_dir: ./_smoke_unused/objectnet
+  batch_size: 8
+  num_workers: 0          # 0 workers -> no multiprocessing in the smoke path
+  max_images: 32          # only fabricate a handful of "images" worth of tokens
+
+sae:
+  d_in: 64                # tiny stand-in width
+  expansion: 4            # n_features = 4 * 64 = 256 (small overcomplete dict)
+  k: 8
+  normalize: unit_meansquare
+  lr: 4.0e-4
+  warmup: 5
+  token_budget: 50_000    # a few thousand tokens is enough for the smoke train
+  batch_tokens: 256
+  aux_k: 16
+  dead_window: 20_000
+  ckpt_every: 50
+
+steering:
+  strength_grid: [0, 0.5, 1, 2, 4]
+  proj_rank_r: 16
+  bank_tokens: 4_000
+
+cfs:
+  n_probe_classes: 5
+  bootstrap_n: 100
+
+ood:
+  levels: [clean, imagenet_r, imagenet_sketch, imagenet_c, objectnet]
+  severities: [1, 2, 3]   # fewer severities keep the smoke sweep quick
+
+paths:
+  cache_dir: ./cache_smoke
+  out_dir: ./outputs_smoke
+  sae_ckpt: ./outputs_smoke/sae.safetensors
+  manifold_basis: ./outputs_smoke/U_r.npy
+
+# Smoke-only knobs: how many synthetic shards to fabricate and tokens/shard.
+smoke:
+  n_shards: 3
+  tokens_per_shard: 4096
+  n_patches: 256          # tokens per fabricated "image" (matches ViT-L/14 grid)
+
+seed: 0

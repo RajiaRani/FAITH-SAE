@@ -1,0 +1,75 @@
+# =============================================================================
+# vit_b_84m.yaml  --  FAITH-SAE real run  ·  MEDIUM backbone (ViT-B, ~86M params).
+# Author: Rajia Rani  ()
+#
+# The middle rung of the MODEL-SIZE axis. Standard SUPERVISED timm ViT-B/16
+# (~86M params, width d=768, 12 blocks, 196 patch tokens @224px). One of three
+# configs (S/B/L) the model-size sweep runs. Same shared schema as the others;
+# only the backbone + dims change.
+# -----------------------------------------------------------------------------
+# For research and educational purposes only.
+# =============================================================================
+
+# --- Backbone: a FROZEN supervised timm ViT-B --------------------------------
+# REAL RUN: loaded via timm.create_model(name, pretrained=True, num_classes=0),
+# frozen + eval + no-grad, with a forward hook on model.blocks[layer] capturing
+# the patch tokens (CLS dropped). framework: timm selects the timm path.
+backbone:
+  framework: timm                 # timm (default) | open_clip
+  name: vit_base_patch16_224      # ~86M params, width 768, 12 blocks.
+                                  # NOTE: swap `name` to YOUR exact model string
+                                  # if this doesn't match how you load your ViT
+                                  # (e.g. vit_base_patch16_224.augreg_in21k_ft_in1k).
+  pretrained: true                # use the supervised pretrained weights
+  layer: 9                        # late-middle block of 12 (A5 ablation sweeps this)
+  token_type: patch
+  image_size: 224
+  device: cuda
+
+# --- Data: the student's domain-shift ladder ----------------------------------
+data:
+  imagenet_train_dir: /path/already/on/cluster/imagenet/train
+  in100_classes_file: ./in100_classes.txt
+  data_dir: ./data
+  batch_size: 384           # B/16 -> a healthy image batch on a mid GPU
+  num_workers: 8
+  max_images: null
+
+sae:
+  d_in: 768                 # = ViT-B width
+  expansion: 32             # n_features = 32 * 768 = 24576
+  k: 32
+  normalize: unit_meansquare
+  lr: 4.0e-4
+  warmup: 1000
+  token_budget: 200_000_000   # ~200M tokens (196 tokens/img -> ~1.02M img-passes)
+  batch_tokens: 8192
+  aux_k: 256
+  dead_window: 10_000_000
+  ckpt_every: 5000
+
+steering:
+  strength_grid: [0, 0.5, 1, 2, 4]
+  proj_rank_r: 384
+  bank_tokens: 2_000_000
+
+cfs:
+  n_probe_classes: 50
+  bootstrap_n: 2000
+
+# --- OOD ladder: the student's datasets ordered by shift strength -------------
+#   in1k (in-distribution, also the SAE-training source)
+#   in100 (mild shift; a 100-class subset of ImageNet)
+#   food101 (domain shift)
+#   cifar100 (strong domain + resolution shift; 32x32 upsampled to 224)
+ood:
+  levels: [in1k, in100, food101, cifar100]
+  usability_floor: 0.5
+
+paths:
+  cache_dir: ./cache_vit_b
+  out_dir: ./outputs_vit_b
+  sae_ckpt: ./outputs_vit_b/sae.safetensors
+  manifold_basis: ./outputs_vit_b/U_r.npy
+
+seed: 0

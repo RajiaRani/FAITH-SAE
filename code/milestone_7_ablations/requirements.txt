@@ -1,0 +1,18 @@
+# Milestone 7 (Ablations A1-A5) — ADDITIVE requirements only.
+#
+# The BASE requirements live in the project root:
+#   ../../requirements.txt   (torch, pyyaml, pytest, numpy)
+# Everything this milestone needs is already covered by that base PLUS:
+#   * scikit-learn  — LogisticRegression probe "rulers" (specificity), PCA for the
+#                     on-manifold subspace U_r, and the train/test split.
+#   * scipy         — scipy.stats.spearmanr for the MONOTONICITY component (the
+#                     rank correlation between the steering knob and the readout).
+#   * matplotlib    — renders the 5-panel outputs/ablations.png (step6).
+#
+# On the provided /usr/bin/python3, torch, numpy, pyyaml, scikit-learn, scipy, and
+# matplotlib are all preinstalled, so you typically need to install NOTHING.
+#
+# If you are on a fresh machine, install the base first, then these lines:
+scikit-learn>=1.3   # probe rulers + PCA(U_r) + held-out split
+scipy>=1.7          # spearmanr -> the monotonicity component
+matplotlib>=3.5     # renders outputs/ablations.png (step6)

@@ -1,0 +1,600 @@
+\documentclass[11pt]{article}
+
+% ---------------------------------------------------------------------------
+% FAITH-SAE Roadmap
+% Author: Rajia Rani
+% No lab/team affiliation. For research and educational purposes only.
+% ---------------------------------------------------------------------------
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[margin=0.85in]{geometry}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{tcolorbox}
+\usepackage{enumitem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{multicol}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage[hidelinks]{hyperref}
+\hypersetup{colorlinks=true, linkcolor=accent!70!black, urlcolor=accent!70!black,
+            citecolor=accent!70!black}
+
+\tcbuselibrary{skins,breakable}
+
+% ----- palette -------------------------------------------------------------
+\definecolor{accent}{RGB}{34,94,168}      % deep blue
+\definecolor{accent2}{RGB}{0,128,128}     % teal
+\definecolor{snapbg}{RGB}{232,240,250}
+\definecolor{snaprule}{RGB}{34,94,168}
+\definecolor{insightbg}{RGB}{235,246,242}
+\definecolor{insightrule}{RGB}{0,128,128}
+\definecolor{delivbg}{RGB}{252,244,228}
+\definecolor{delivrule}{RGB}{198,138,28}
+\definecolor{scopebg}{RGB}{244,238,248}
+\definecolor{scoperule}{RGB}{120,80,160}
+\definecolor{checkbg}{RGB}{238,243,236}
+\definecolor{checkrule}{RGB}{80,140,70}
+
+% ----- header / footer -----------------------------------------------------
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0.4pt}
+\lhead{\small\textsc{FAITH-SAE Roadmap}}
+\rhead{\small Rajia Rani}
+\lfoot{\small 2026-06-20 \;$\cdot$\; For research and educational purposes only.}
+\rfoot{\small\thepage}
+
+% ----- section styling -----------------------------------------------------
+\titleformat{\section}{\Large\bfseries\color{accent}}{\thesection}{0.6em}{}
+\titleformat{\subsection}{\large\bfseries\color{accent!85!black}}{\thesubsection}{0.5em}{}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.35em}
+\titlespacing*{\section}{0pt}{1.0em}{0.4em}
+\titlespacing*{\subsection}{0pt}{0.7em}{0.3em}
+
+% ----- reusable boxes ------------------------------------------------------
+\newtcolorbox{snapbox}[1][]{colback=snapbg,colframe=snaprule,
+  boxrule=0.8pt,arc=2pt,left=8pt,right=8pt,top=6pt,bottom=6pt,breakable,#1}
+\newtcolorbox{insightbox}[1][]{colback=insightbg,colframe=insightrule,
+  boxrule=0.8pt,arc=2pt,left=8pt,right=8pt,top=6pt,bottom=6pt,breakable,
+  title=#1,fonttitle=\bfseries\color{white},colbacktitle=insightrule}
+\newtcolorbox{delivbox}[1][]{colback=delivbg,colframe=delivrule,
+  boxrule=0.8pt,arc=2pt,left=8pt,right=8pt,top=4pt,bottom=4pt,breakable,
+  title=#1,fonttitle=\bfseries\color{white},colbacktitle=delivrule}
+\newtcolorbox{scopebox}[1][]{colback=scopebg,colframe=scoperule,
+  boxrule=0.8pt,arc=2pt,left=8pt,right=8pt,top=4pt,bottom=4pt,breakable,
+  title=#1,fonttitle=\bfseries\color{white},colbacktitle=scoperule}
+\newtcolorbox{checkbox}[1][]{colback=checkbg,colframe=checkrule,
+  boxrule=0.8pt,arc=2pt,left=8pt,right=8pt,top=4pt,bottom=4pt,breakable,
+  title=#1,fonttitle=\bfseries\color{white},colbacktitle=checkrule}
+
+\newcommand{\cbox}{$\square$\;}
+
+% ===========================================================================
+\begin{document}
+
+\begin{center}
+  {\LARGE\bfseries\color{accent} FAITH-SAE: Are Sparse-Autoencoder Concept\\[2pt]
+   Directions in Vision Models Causally Faithful\\[2pt]
+   Under Distribution Shift?}\\[8pt]
+  {\large 8-Week Research Roadmap}\\[5pt]
+  {\normalsize Rajia Rani \;$\cdot$\; \texttt{}}\\[3pt]
+  {\small 2026-06-20 \;$\cdot$\; For research and educational purposes only.}
+\end{center}
+
+\vspace{0.3em}
+\hrule
+\vspace{0.6em}
+
+% ===========================================================================
+\section{What This Project Is About}
+
+\begin{snapbox}
+\textbf{\color{accent} Project Snapshot}\\[4pt]
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{@{}>{\bfseries}p{0.20\linewidth} p{0.74\linewidth}@{}}
+Building blocks &
+  Steering methods over a \emph{frozen} CLIP ViT-B/16 + TopK sparse autoencoder:
+  \texttt{naive\_steer} (off-manifold activation-addition), \texttt{random\_steer},
+  \texttt{clamp\_steer}, and \texttt{onmanifold\_steer} (project the edit onto the
+  top-$r$ real-image subspace, \emph{ours}).\\
+Baselines &
+  Supervised TCAV-style concept-direction steering (quality reference), naive
+  off-manifold activation-addition (main competitor), random-direction (null/sanity),
+  raw-clamp --- all at \textbf{matched steering strength}.\\
+Benchmarks &
+  Clean ImageNet-val $\rightarrow$ ImageNet-R $\rightarrow$ ImageNet-Sketch
+  $\rightarrow$ ImageNet-C (severity 1--5) $\rightarrow$ ObjectNet.\\
+Metrics &
+  Monotonicity, specificity, sufficiency $\rightarrow$ \textbf{Causal Faithfulness
+  Score (CFS)} $\in[0,1]$; off-manifold residual; $\Delta$CFS-per-shift degradation
+  slope with bootstrap CIs over concepts.\\
+Big idea &
+  A steering \emph{method} with no metric is unfalsifiable; a \emph{metric} applied to
+  naive edits just measures artifacts. Combine them: measure CFS of on-manifold
+  steering \emph{across the OOD ladder}. Each mechanism cures the other's blind spot.\\
+Target &
+  On-manifold steering achieves higher CFS than naive / random / clamp at matched
+  strength on clean images, approaches the supervised reference, and degrades more
+  gracefully under shift --- locating the collapse knee.\\
+\end{tabular}
+\end{snapbox}
+
+Sparse autoencoders (SAEs) decompose a frozen backbone's dense, polysemantic
+activations into a large dictionary of sparse, human-nameable \emph{concept
+directions}. In vision this has produced striking demonstrations --- directions that
+appear to encode ``stripes,'' ``dog face,'' or ``snowy scene.'' But a picture that
+\emph{looks} interpretable is not the same as a direction that is \emph{causally real}:
+if we push the ``dog face'' direction up, does behaviour move smoothly and specifically
+the way the concept's name promises, or have we merely produced a plausible artifact?
+
+This project studies two ingredients usually examined apart.
+\textbf{Mechanism A --- on-manifold steering (the method)} forces a chosen SAE concept
+up or down inside the frozen backbone, but \emph{constrains} the edit: instead of the
+raw activation-addition $\Delta$, it adds the projection $P_M\!\cdot\!\Delta$ onto the
+top-$r$ principal directions of \emph{real}-image activations, so the steered
+activation stays in the region the model was trained on. The edit is realistic,
+decodable, and non-destructive. Its weakness alone: a steering method with no metric is
+unfalsifiable. \textbf{Mechanism B --- the CFS metric plus OOD stress (the measuring
+stick)} is a single score in $[0,1]$ asking whether an edit is \emph{monotone} (knob up
+$\rightarrow$ readout up smoothly), \emph{specific} (only the target concept moves), and
+\emph{sufficient} (effect size matches the claimed magnitude) --- re-measured as images
+get harder. Its weakness alone: on naive steering it just quantifies off-manifold
+artifacts.
+
+\begin{insightbox}[The opening]
+The unoccupied space is the \textbf{combination}: measure the CFS of on-manifold
+steering \emph{across} the OOD sweep (clean $\rightarrow$ R $\rightarrow$ Sketch
+$\rightarrow$ C $\rightarrow$ ObjectNet). On-manifold steering gives the metric
+something \emph{real} to measure; the metric proves the on-manifold edit is faithful
+and tracks exactly where it breaks. The CFS-versus-shift curve is the paper's answer.
+Prior work shows SAEs \emph{find} vision concepts and that you \emph{can} steer them,
+and separately warns that off-manifold steering is unreliable --- but no one has a
+\textbf{quantitative faithfulness benchmark for vision SAE features}, and no one has
+tested faithfulness \textbf{under distribution shift}.
+\end{insightbox}
+
+\begin{scopebox}[Scope \& Realism Note]
+This is a \emph{controlled, reproducible} interpretability study, not a leaderboard
+chase. We use one small, public, frozen backbone (CLIP ViT-B/16) and a fixed public
+data budget (ImageNet-val and its shifted variants), so every comparison holds the
+backbone, SAE, and steering strength constant and changes only the steering
+\emph{method} or one design knob. The headline quantity --- the \textbf{Causal
+Faithfulness Score}, a backbone- and library-independent number per concept and per
+shift level (the analog of ``bytes/token'') --- is reported alongside wall-clock so
+results transfer beyond our setup. Every figure ships with \emph{illustrative}
+placeholder numbers until the real CLIP + ImageNet-shift runs land at Milestone~3.
+\end{scopebox}
+
+% ===========================================================================
+\section{Research Questions \& Timeline}
+
+\textbf{RQ1 (headline --- on-manifold vs.\ the field).}
+Does on-manifold projected steering achieve a higher Causal Faithfulness Score (CFS)
+than naive off-manifold activation-addition steering --- and than random-direction,
+raw-clamp, and supervised concept-direction (TCAV-style) steering --- at
+\textbf{matched steering strength} on clean, in-distribution images?
+
+\textbf{RQ2 (core knob --- decomposition \& design).}
+How does CFS \emph{decompose} into monotonicity / specificity / sufficiency, what
+fraction of discovered concepts steer reliably (the field's ``only $\sim$10--15\%''
+claim), and how does the faithfulness optimum depend on the two design knobs ---
+\textbf{steering strength} $s$ and \textbf{manifold-projection rank} $r$?
+
+\textbf{RQ3 (the sweep --- collapse knee).}
+Does CFS \emph{survive distribution shift} across clean ImageNet $\rightarrow$
+ImageNet-R $\rightarrow$ ImageNet-Sketch $\rightarrow$ ImageNet-C (corruption-severity
+dial) $\rightarrow$ ObjectNet, and \textbf{where is the collapse knee} --- i.e.\ what
+is the $\Delta$CFS-per-shift-level degradation slope, and does on-manifold steering
+degrade more gracefully than naive?
+
+\vspace{0.4em}
+\renewcommand{\arraystretch}{1.3}
+\begin{center}
+\begin{tabular}{@{}p{0.20\linewidth} p{0.12\linewidth} p{0.60\linewidth}@{}}
+\toprule
+\textbf{Milestone} & \textbf{Weeks} & \textbf{Key Deliverable(s)}\\
+\midrule
+M1 --- Literature Review \& Block Design & W1--2 &
+  Annotated 12-paper review; CFS definition fixed; the four steering variants and the
+  evaluation protocol designed; Deliverable~\#1.\\
+M2 --- Data Pipeline \& Implementation & W3--4 &
+  CLIP ViT-B/16 + TopK SAE pipeline; the OOD data ladder loaded; all variants
+  implemented and validated on the synthetic planted-concept task; Deliverable~\#2.\\
+M3 --- Training \& Ablation Experiments & W5--6 &
+  Full CFS measurements across variants and the OOD ladder; ablations A1--A5; error
+  taxonomy populated; \texttt{results/metrics\_all.csv}; Deliverable~\#3.\\
+M4 --- Analysis, Insights \& Manuscript & W7--8 &
+  9 figures; insight report answering RQ1--RQ3; practitioner decision table;
+  IEEE-conference manuscript draft; Deliverable~\#4.\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% ===========================================================================
+\section{Milestone 1: Literature Review \& Block Design}
+
+\textbf{Objectives (three pillars).}
+\begin{enumerate}[leftmargin=1.4em,itemsep=2pt]
+  \item \textbf{Concepts.} Master how vision SAEs discover concept directions (TopK vs.\
+    L1 dictionaries, monosemanticity, the polysemantic tail) so we know what we are
+    steering and why most directions are not clean knobs.
+  \item \textbf{Steering \& faithfulness.} Pin down activation-addition / representation
+    engineering, the on-manifold constraint $P_M\!\cdot\!\Delta$, and what it means for
+    an edit to be causally faithful (monotone, specific, sufficient) --- then formalize
+    CFS as a single conjunctive score.
+  \item \textbf{Robustness.} Understand the distribution-shift ladder (renditions,
+    sketch, graded corruption, real-world ObjectNet shift) so the OOD sweep is a
+    principled stress test, not an arbitrary sample.
+\end{enumerate}
+
+\renewcommand{\arraystretch}{1.2}
+\begin{center}\small
+\begin{tabular}{@{}p{0.24\linewidth} p{0.40\linewidth} p{0.30\linewidth}@{}}
+\toprule
+\textbf{Component} & \textbf{Mechanism} & \textbf{Role}\\
+\midrule
+TopK Sparse Autoencoder & Sparse dictionary over frozen ViT activations; keep top-$k$
+  features active per token & Discovers the concept directions we steer\\
+Concept direction $d$ & A single SAE decoder column (a feature's direction in
+  activation space) & The knob we push up/down\\
+On-manifold projection $P_M$ & $P_M=U_rU_r^{\!\top}$ onto top-$r$ real-image PCA
+  subspace; $a'=a+s\,(P_M\Delta)$ & Keeps the edit realistic / decodable (the method)\\
+Steering strength $s$ & Scalar multiplier on the (projected) edit & The intensity knob;
+  too large $\Rightarrow$ saturation\\
+CFS $=\mathrm{HM}$(mono, spec, suff) & Harmonic mean $\Rightarrow$ conjunctive: faithful
+  only if \emph{all three} hold & The single contributed measuring stick\\
+OOD ladder & clean $\to$ R $\to$ Sketch $\to$ C(1--5) $\to$ ObjectNet & The shift axis;
+  yields the CFS-vs-severity curve\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{Reading list (12 papers)}
+\begin{enumerate}[leftmargin=1.6em,itemsep=0pt]
+  \item Cunningham et al.\ 2023 --- \emph{Sparse Autoencoders Find Highly Interpretable
+    Features} --- arXiv:2309.08600.
+  \item Bricken et al.\ 2023 --- \emph{Towards Monosemanticity: Decomposing Language
+    Models with Dictionary Learning} (Anthropic).
+  \item Gao et al.\ 2024 --- \emph{Scaling and Evaluating Sparse Autoencoders} (TopK
+    SAE) --- arXiv:2406.04093.
+  \item Templeton et al.\ 2024 --- \emph{Scaling Monosemanticity} (Anthropic).
+  \item Turner et al.\ 2023 --- \emph{Activation Addition / ActAdd: Steering Language
+    Models} --- arXiv:2308.10248.
+  \item Zou et al.\ 2023 --- \emph{Representation Engineering: A Top-Down Approach to AI
+    Transparency} --- arXiv:2310.01405.
+  \item Kim et al.\ 2017 --- \emph{Interpretability Beyond Feature Attribution (TCAV)}
+    --- arXiv:1711.11279.
+  \item Radford et al.\ 2021 --- \emph{Learning Transferable Visual Models from Natural
+    Language (CLIP)} --- arXiv:2103.00020.
+  \item Dosovitskiy et al.\ 2020 --- \emph{An Image is Worth 16x16 Words (ViT)} ---
+    arXiv:2010.11929.
+  \item Hendrycks et al.\ 2020 --- \emph{The Many Faces of Robustness (ImageNet-R)} ---
+    arXiv:2006.16241.
+  \item Hendrycks \& Dietterich 2019 --- \emph{Benchmarking Neural Network Robustness
+    (ImageNet-C)} --- arXiv:1903.12261.
+  \item Wang et al.\ 2019 --- \emph{Learning Robust Global Representations
+    (ImageNet-Sketch)} --- arXiv:1905.13549.
+\end{enumerate}
+The manuscript expands this to $\sim$24 entries with ObjectNet (Barbu et al.\ 2019),
+Causal Scrubbing (Chan et al.\ 2022), Makelov et al.\ (2405.08366), Rajamanoharan
+et al.\ \emph{JumpReLU / Gated SAEs} (2407.14435 / 2404.16014), Marks et al.\ \emph{Sparse
+Feature Circuits} (2403.19647), Fel et al.\ (vision dictionary learning), Hooker et al.\
+\emph{ROAR} (1806.10758), and Geirhos et al.\ \emph{Texture-vs-Shape Bias} (1811.12231).
+
+\begin{insightbox}[Core Research Insight]
+Faithfulness is \textbf{conjunctive}, not additive. A steered concept is trustworthy
+only if it is \emph{monotone and specific and sufficient at once} --- a near-zero on
+any single axis (e.g.\ an edit that moves the readout but also drags every off-target
+probe) should collapse the whole score. We therefore define CFS as the \emph{harmonic
+mean} of the three components, so one weak axis dominates. The on-manifold projection
+$P_M\Delta$ is what gives that conjunction a chance to hold: by keeping the edit inside
+the real-image subspace, it preserves specificity and decodability that naive
+off-manifold addition destroys --- and we expect that advantage to widen, not shrink,
+as inputs move out of distribution.
+\end{insightbox}
+
+\subsection*{Evaluation plan}
+\textbf{Metrics.} Per concept: monotonicity (Spearman correlation between the steering
+knob and a held-out concept readout), specificity ($1-$ normalized drift of off-target
+linear probes), sufficiency (standardized Cohen's-$d$ effect size at full knob vs.\ the
+concept's claimed magnitude); composite CFS $=\mathrm{HM}(\cdot)$; off-manifold
+residual $\lVert\Delta-P_M\Delta\rVert/\lVert\Delta\rVert$; and the OOD degradation
+slope $\Delta\mathrm{CFS}/\Delta\text{shift}$ with bootstrap CIs over concepts.
+\textbf{Protocols.} Matched steering strength across all methods; held-out readout
+probes never seen during direction selection; the same selected concept set evaluated
+at every shift level. \textbf{Baselines.} Supervised TCAV-style (quality reference),
+naive off-manifold (main competitor), random-direction (null), raw-clamp.
+
+\begin{delivbox}[Deliverable \#1 --- Review \& Design]
+A written literature review of the 12 papers; a frozen, equation-level definition of
+CFS and the on-manifold edit $a'=a+s(P_M\Delta)$; the four steering variants
+(\texttt{naive\_steer}, \texttt{random\_steer}, \texttt{clamp\_steer},
+\texttt{onmanifold\_steer}) and the supervised reference specified; the evaluation
+protocol (metrics, matched-strength rule, OOD ladder) fixed.
+\end{delivbox}
+\begin{checkbox}[Acceptance Check]
+CFS and $P_M\Delta$ are written down unambiguously; each of the 5 baselines/variants has
+a one-line precise definition; the protocol guarantees every method is compared at
+matched strength on the \emph{same} concepts; a reviewer can restate the open gap
+(no quantitative vision-SAE faithfulness benchmark; none tested under shift) in one
+sentence.
+\end{checkbox}
+
+% ===========================================================================
+\section{Milestone 2: Data Pipeline \& Implementation}
+
+\renewcommand{\arraystretch}{1.2}
+\begin{center}\small
+\begin{tabular}{@{}p{0.20\linewidth} p{0.13\linewidth} p{0.34\linewidth} p{0.26\linewidth}@{}}
+\toprule
+\textbf{Dataset} & \textbf{Size} & \textbf{Description} & \textbf{Use}\\
+\midrule
+ImageNet-val & 50k & Clean in-distribution validation images & Quality reference: clean
+  CFS, concept readouts, SAE training source\\
+ImageNet-R & 30k & Renditions / abstractions (art, cartoons, sculpture) & Does
+  faithfulness survive style/domain shift\\
+ImageNet-Sketch & 50k & Black-and-white sketches; texture removed & Concept readout
+  without texture cues (hard stress)\\
+ImageNet-C & 50k$\times$ & 15 corruptions $\times$ severity 1--5 (the dial) & Graded
+  OOD: the headline CFS-vs-severity curve\\
+ObjectNet & 50k & Real-world pose / background / viewpoint controls & Hardest shift;
+  the faithfulness floor\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Tasks.}
+\begin{enumerate}[leftmargin=1.5em,itemsep=1pt]
+  \item Load frozen CLIP ViT-B/16; extract \& cache patch (and CLS) activations at the
+    chosen layer for ImageNet-val.
+  \item Train a TopK SAE; build the concept dictionary; estimate the top-$r$ real-image
+    PCA subspace $U_r$ for $P_M$.
+  \item Implement the four steering variants behind one registry
+    (\texttt{src/blocks/\_\_init\_\_.py}), plus the supervised TCAV-style reference and
+    the held-out readout / off-target probes.
+  \item Implement OOD loaders for R / Sketch / C(1--5) / ObjectNet with a fixed, matched
+    evaluation protocol across shifts.
+  \item Wire \texttt{cfs\_score}, \texttt{onmanifold\_projection\_residual}, and the
+    \texttt{faithfulness(variant,cfg)} dispatcher so \texttt{run\_experiments} and the EDA
+    notebook share one scoring model; emit \texttt{cfs} + components +
+    \texttt{offmanifold\_residual} to \texttt{metrics\_all.csv}.
+  \item Validate end-to-end on the offline synthetic planted-concept smoke task; confirm
+    \texttt{onmanifold\_steer} beats \texttt{naive}/\texttt{random} on synthetic-CFS.
+\end{enumerate}
+
+\begin{delivbox}[Deliverable \#2 --- Pipeline \& Implementation]
+A runnable pipeline: frozen CLIP $\to$ TopK SAE $\to$ concept directions $\to$ the four
+steering variants + supervised reference $\to$ CFS scoring, with all five OOD datasets
+loadable and the synthetic smoke path green.
+\end{delivbox}
+\begin{checkbox}[Acceptance Check]
+\texttt{python -m src.run\_experiments --smoke} writes \texttt{metrics\_all.csv} with a
+row per variant including \texttt{cfs} and \texttt{offmanifold\_residual};
+\texttt{onmanifold\_steer} shows lower off-manifold residual and higher synthetic-CFS
+than \texttt{naive}/\texttt{random}; the real CLIP + ImageNet-shift loaders import and
+return correctly-shaped batches on at least one shift level.
+\end{checkbox}
+
+% ===========================================================================
+\section{Milestone 3: Training \& Ablation Experiments}
+
+\renewcommand{\arraystretch}{1.2}
+\begin{center}\small
+\begin{tabular}{@{}p{0.30\linewidth} p{0.26\linewidth} p{0.36\linewidth}@{}}
+\toprule
+\textbf{Model / Steering method} & \textbf{Cache-or-cost} & \textbf{Primary metrics}\\
+\midrule
+Supervised TCAV-style (reference) & Label-expensive direction & CFS + components
+  (the gold to approach)\\
+\texttt{onmanifold\_steer} (ours) & $P_M\Delta$, rank $r$ & CFS, off-manifold residual,
+  OOD slope\\
+\texttt{clamp\_steer} & Fixed-magnitude clamp, no projection & CFS, residual\\
+\texttt{naive\_steer} & Off-manifold $a+s\,d$ & CFS, residual (main competitor)\\
+\texttt{random\_steer} & Random direction & CFS (null/sanity floor)\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Implementation details.} All methods are evaluated at matched steering strength
+on the same selected concept set; readout probes are held out from selection; the OOD
+ladder uses identical preprocessing per shift; CFS, its components, and the off-manifold
+residual are bootstrapped over concepts. The core experiment is the $r\times s$ design
+grid (A3 $\times$ steering-strength) feeding the headline CFS-vs-severity curve.
+
+\subsection*{Error taxonomy}
+\renewcommand{\arraystretch}{1.2}
+\begin{center}\small
+\begin{tabular}{@{}p{0.24\linewidth} p{0.46\linewidth} p{0.24\linewidth}@{}}
+\toprule
+\textbf{Error Type} & \textbf{Description} & \textbf{Expected Frequency}\\
+\midrule
+Off-Manifold Artifact & Naive edit leaves the real-image manifold; readout moves but the
+  change is non-realistic / undecodable (a fake causal effect) & High for
+  \texttt{naive\_steer}/\texttt{clamp\_steer}; rare for \texttt{onmanifold\_steer}\\
+Specificity Leakage & Steering the target concept also moves off-target probes
+  (entangled / polysemantic direction) & Medium; rises with steering strength\\
+Polysemantic / Uninterpretable Feature & The SAE feature encodes several concepts (or
+  none clean) $\Rightarrow$ no clean knob; filtered by A4 & Medium pre-selection;
+  $\sim$85\% of raw features\\
+OOD Collapse & Faithful in-distribution but CFS collapses under shift
+  (Sketch / C-high / ObjectNet) --- the headline failure mode & Rises sharply past the
+  shift knee\\
+Magnitude Saturation & Beyond a strength threshold the readout flattens / clips;
+  monotonicity breaks & Rises with steering strength\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{Ablations A1--A5}
+\begin{description}[leftmargin=2.6em,style=nextline,itemsep=2pt]
+  \item[A1 --- SAE type] TopK vs.\ L1 (vanilla) SAE: effect on clean concept magnitudes
+    and CFS.
+  \item[A2 --- TopK $k$] Sparsity-level sweep: how $k$ trades interpretability against
+    faithfulness; CFS per $k$.
+  \item[A3 --- Projection rank $r$] The core knob: low $r$ over-constrains (effect dies),
+    high $r$ lets the edit drift off-manifold; locate the CFS knee.
+  \item[A4 --- Concept-selection threshold] How strict the ``well-defined concept''
+    filter is, and the resulting reliable-concept fraction (the $\sim$10--15\% tail);
+    CFS per threshold.
+  \item[A5 --- Backbone layer \& token] Which ViT-B/16 layer, and patch vs.\ CLS tokens,
+    for SAE training and steering; CFS per choice.
+\end{description}
+The core ablation is the \textbf{A3 $\times$ steering-strength} 2-D grid
+(figures \texttt{fig5}/\texttt{fig3}).
+
+\begin{delivbox}[Deliverable \#3 --- Experiments \& Ablations]
+A complete \texttt{results/metrics\_all.csv} covering all 5 steering methods across the
+full OOD ladder, the A1--A5 ablation grids (with the A3$\times s$ core grid), and a
+populated error-taxonomy tally --- all with bootstrap CIs over concepts.
+\end{delivbox}
+\begin{checkbox}[Acceptance Check]
+Every (method, shift level) cell has a CFS with a confidence interval;
+\texttt{random\_steer} sits at the floor and the supervised reference near the top
+(sanity); the A3 sweep shows a non-monotone CFS-vs-$r$ curve with an identifiable knee;
+the strength sweep shows the saturation onset; each error type has a measured frequency.
+\end{checkbox}
+
+% ===========================================================================
+\section{Milestone 4: Analysis, Insights \& Manuscript}
+
+\textbf{Core visualizations (9).}
+\begin{itemize}[leftmargin=1.4em,itemsep=0pt]
+  \item \texttt{fig1\_cfs\_ood\_sweep} --- \textbf{headline}: CFS vs.\ shift severity
+    (clean $\to$ R $\to$ Sketch $\to$ C-1..5 $\to$ ObjectNet), on-manifold vs.\ naive;
+    collapse knee marked, CI band.
+  \item \texttt{fig2\_faithfulness\_pareto} --- specificity vs.\ effect-size across all 5
+    methods; on-manifold on the frontier, random in the corner.
+  \item \texttt{fig3\_strength\_sweep} --- CFS vs.\ strength $s$ with the saturation knee.
+  \item \texttt{fig4\_concept\_reliability} --- per-concept CFS distribution: the long
+    unreliable mass and the $\sim$10--15\% reliable tail.
+  \item \texttt{fig5\_ood\_heatmap} --- shift type $\times$ method CFS grid; best cell boxed.
+  \item \texttt{fig6\_monotonicity\_curve} --- example readout vs.\ knob: smooth
+    (on-manifold) vs.\ jagged (naive).
+  \item \texttt{fig7\_by\_method\_bar} --- mean CFS by variant with bootstrap CIs; plus
+    schematics \texttt{fig\_overview} and \texttt{fig\_method}.
+\end{itemize}
+
+\textbf{Insight report.} \emph{RQ1:} whether on-manifold beats naive / random / clamp at
+matched strength on clean images and how close it gets to the supervised reference, with
+CIs. \emph{RQ2:} decompose CFS into monotonicity / specificity / sufficiency, give the
+reliable-concept fraction against the $\sim$10--15\% claim, and locate the optimum over
+$(s,r)$. \emph{RQ3:} the CFS-vs-severity curve, the $\Delta$CFS-per-shift slope, the
+collapse knee, and whether on-manifold degrades more gracefully than naive.
+
+\renewcommand{\arraystretch}{1.2}
+\begin{center}\small
+\begin{tabular}{@{}p{0.27\linewidth} p{0.30\linewidth} p{0.36\linewidth}@{}}
+\toprule
+\textbf{Use Case} & \textbf{Recommended Design} & \textbf{Reasoning}\\
+\midrule
+Trustworthy concept editing on clean data & \texttt{onmanifold\_steer}, moderate $r$,
+  pre-saturation $s$ & Highest clean CFS at matched strength; low off-manifold residual\\
+Auditing under domain shift & On-manifold + report CFS at each shift level & Tracks the
+  collapse knee; flags where a ``concept'' stops being causal\\
+Label-rich, accuracy-critical concept & Supervised TCAV-style reference & The expensive
+  gold; use when labels exist and faithfulness is paramount\\
+Quick unsupervised exploration & On-manifold over a strict A4-filtered concept set & Skip
+  the $\sim$85\% polysemantic tail; spend effort on reliable knobs\\
+Never & \texttt{naive\_steer}/\texttt{random\_steer} as evidence & High apparent effect,
+  low real faithfulness --- artifact or null\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Manuscript outline (8 sections, IEEE conference).}
+(1)~Introduction \& the open gap; (2)~Background (vision SAEs, steering, faithfulness,
+robustness); (3)~Method --- the edit $a'=a+s(P_M\Delta)$ and the CFS definition;
+(4)~Experimental setup; (5)~Results --- RQ1--RQ3 with the 9 figures; (6)~Ablations
+A1--A5; (7)~Discussion, limitations \& the per-concept reliability story;
+(8)~Conclusion. \textbf{Packaging:} reproducible config, \texttt{metrics\_all.csv},
+figure scripts, and data cards, all consistent with this roadmap and the brief.
+
+\begin{delivbox}[Deliverable \#4 --- Analysis \& Manuscript]
+The 9 figures rendered from real M3 results; an insight report answering RQ1--RQ3; the
+practitioner decision table; and a complete IEEE-conference manuscript draft.
+\end{delivbox}
+\begin{checkbox}[Acceptance Check]
+Each RQ has a one-paragraph, evidence-backed answer with CIs; every figure caption
+states the measured (not illustrative) numbers; the decision table's recommendations
+follow from the results; the manuscript compiles and matches this roadmap and the brief
+on title, RQs, baselines, benchmarks, and variant names.
+\end{checkbox}
+
+% ===========================================================================
+\section{One-Page Checklist}
+
+\begin{multicols}{2}
+\textbf{Weeks 1--2 --- Literature \& Design}
+\begin{itemize}[leftmargin=1.4em,label={},itemsep=0pt]
+  \item \cbox Read \& annotate all 12 papers; draft the $\sim$24-entry bibliography.
+  \item \cbox Fix the CFS definition and the on-manifold edit $a'=a+s(P_M\Delta)$.
+  \item \cbox Specify the 4 variants + supervised reference; matched-strength protocol.
+  \item \cbox Deliverable~\#1 + Acceptance Check signed off.
+\end{itemize}
+
+\textbf{Weeks 3--4 --- Data \& Implementation}
+\begin{itemize}[leftmargin=1.4em,label={},itemsep=0pt]
+  \item \cbox CLIP ViT-B/16 activations cached; TopK SAE trained; $U_r$ estimated.
+  \item \cbox Four steering variants + readout / off-target probes implemented.
+  \item \cbox OOD loaders (R / Sketch / C / ObjectNet) and CFS dispatcher wired.
+  \item \cbox Synthetic smoke green; Deliverable~\#2 + Acceptance Check.
+\end{itemize}
+
+\columnbreak
+
+\textbf{Weeks 5--6 --- Experiments \& Ablations}
+\begin{itemize}[leftmargin=1.4em,label={},itemsep=0pt]
+  \item \cbox CFS for all 5 methods across the full OOD ladder, bootstrapped.
+  \item \cbox Ablations A1--A5, including the A3$\times s$ core grid.
+  \item \cbox Error taxonomy tallied; \texttt{metrics\_all.csv} complete.
+  \item \cbox Deliverable~\#3 + Acceptance Check.
+\end{itemize}
+
+\textbf{Weeks 7--8 --- Analysis \& Manuscript}
+\begin{itemize}[leftmargin=1.4em,label={},itemsep=0pt]
+  \item \cbox All 9 figures rendered from real results.
+  \item \cbox Insight report answers RQ1--RQ3 with CIs; decision table filled.
+  \item \cbox IEEE-conference manuscript drafted; consistent with the brief.
+  \item \cbox Deliverable~\#4 + Acceptance Check; repository packaged.
+\end{itemize}
+\end{multicols}
+
+% ===========================================================================
+\section{Quick Reference Links}
+
+\begin{multicols}{2}
+\begin{itemize}[leftmargin=1.2em,itemsep=0pt]
+  \item Cunningham et al., \emph{SAEs Find Interpretable Features} ---
+    \href{https://arxiv.org/abs/2309.08600}{2309.08600}
+  \item Gao et al., \emph{Scaling \& Evaluating SAEs (TopK)} ---
+    \href{https://arxiv.org/abs/2406.04093}{2406.04093}
+  \item Turner et al., \emph{Activation Addition} ---
+    \href{https://arxiv.org/abs/2308.10248}{2308.10248}
+  \item Zou et al., \emph{Representation Engineering} ---
+    \href{https://arxiv.org/abs/2310.01405}{2310.01405}
+  \item Kim et al., \emph{TCAV} ---
+    \href{https://arxiv.org/abs/1711.11279}{1711.11279}
+  \item Radford et al., \emph{CLIP} ---
+    \href{https://arxiv.org/abs/2103.00020}{2103.00020}
+  \item Dosovitskiy et al., \emph{ViT} ---
+    \href{https://arxiv.org/abs/2010.11929}{2010.11929}
+  \item Hendrycks et al., \emph{ImageNet-R} ---
+    \href{https://arxiv.org/abs/2006.16241}{2006.16241}
+  \item Hendrycks \& Dietterich, \emph{ImageNet-C} ---
+    \href{https://arxiv.org/abs/1903.12261}{1903.12261}
+  \item Wang et al., \emph{ImageNet-Sketch} ---
+    \href{https://arxiv.org/abs/1905.13549}{1905.13549}
+  \item Makelov et al., \emph{Principled SAE Eval} ---
+    \href{https://arxiv.org/abs/2405.08366}{2405.08366}
+  \item Marks et al., \emph{Sparse Feature Circuits} ---
+    \href{https://arxiv.org/abs/2403.19647}{2403.19647}
+\end{itemize}
+\end{multicols}
+
+\end{document}

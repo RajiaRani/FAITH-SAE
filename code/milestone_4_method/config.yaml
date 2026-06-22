@@ -1,0 +1,85 @@
+# =============================================================================
+# config.yaml  —  Milestone 4 (Method: on-manifold steering) of FAITH-SAE
+# Author: Rajia Rani
+#
+# WHAT THIS FILE IS
+# -----------------
+# A config file is just a list of named settings (a "knobs sheet") that the
+# code reads at startup, so you can change behaviour WITHOUT editing Python.
+# Analogy: the dials on an oven. The recipe (the .py files) stays the same;
+# you only turn the dials here. Tiny example: set `proj_rank: 16` here and every
+# script that reads this file builds an on-manifold subspace of exactly 16
+# directions.
+#
+# GOLDEN RULE OF THIS PROJECT: every setting below is kept IDENTICAL across all
+# four steering methods. That way the ONLY thing that differs between methods is
+# the steering method itself — a controlled experiment ("matched strength").
+# =============================================================================
+
+seed: 0                 # Random seed = the starting number for the random-number
+                        # generator. Fixing it makes every run reproducible
+                        # (same dice rolls every time). Tiny example: seed 0 vs
+                        # seed 1 give two different but each-repeatable worlds.
+
+# ---- Backbone / activation shape -------------------------------------------
+dim: 64                 # Width of one activation vector (how many numbers
+                        # describe one image-patch). Real CLIP ViT-B/16 uses 768;
+                        # we use 64 so it runs instantly on a laptop CPU.
+n_patches: 16           # How many "patches" (little square tiles) per image.
+                        # A real ViT cuts an image into a grid of patches; here
+                        # it is just the number of activation vectors per item.
+d_model: 64             # = dim. The backbone's internal width. Kept equal to dim.
+
+# ---- The on-manifold subspace (the heart of milestone 4) -------------------
+# The "data manifold" is the thin sheet that REAL-image activations actually
+# live on inside the big dim=64 space. We approximate that sheet by its top
+# directions, found with PCA, and keep only `manifold_rank` of them. We MAKE the
+# synthetic bank live on a sheet of dimension `true_manifold_rank` so there is a
+# ground-truth answer to compare against.
+bank_size: 4096         # How many real-image activation vectors to PCA over.
+                        # Bigger bank => steadier estimate of the sheet. Real
+                        # runs use hundreds of thousands of CLIP activations.
+true_manifold_rank: 8   # SYNTHETIC ground truth: the real activations are built
+                        # to live on an 8-dimensional sheet inside the 64-dim
+                        # space (plus a little off-sheet noise). Unknown in real
+                        # life; here we plant it so we can check our estimate.
+noise_off_manifold: 0.05  # tiny Gaussian wobble pushing points slightly off the
+                          # sheet (no real data is perfectly low-rank).
+manifold_rank: 16       # r = how many estimated directions the on-manifold
+                        # method keeps (columns of U_r). r >= true_manifold_rank
+                        # captures the whole sheet; r much smaller over-constrains
+                        # the edit (effect dies); r -> dim is naive (no projection).
+                        # This is the core design knob (ablation A3 in the brief).
+proj_rank: 16           # alias of manifold_rank read by src/blocks onmanifold_steer
+                        # (kept equal so the src steerer and this milestone agree).
+
+# ---- Sparse Autoencoder (SAE) ----------------------------------------------
+sae_dim: 128            # Size of the SAE "dictionary" = how many concept switches
+                        # the SAE has. Larger than dim (over-complete) so each
+                        # concept can get its own switch. Real runs use thousands.
+sae_type: topk          # 'topk' (keep only the k biggest switches) or 'l1'.
+topk_k: 8               # k = how many switches may be ON at once (the sparsity).
+
+# ---- Steering knobs --------------------------------------------------------
+steer_strength: 4.0     # s = how hard we turn the concept knob. SAME s for every
+                        # method, so the comparison is fair (matched strength).
+steer: onmanifold_steer # the model's DEFAULT steerer (used only when training the
+                        # toy SAE; step3 builds EACH of the four steerers explicitly
+                        # by name, so this default does not bias the comparison).
+
+# ---- SAE training budget (kept tiny for the offline run) -------------------
+steps: 40               # How many gradient steps to train the toy SAE. Equal for
+                        # every variant (equal budget). Raise for sharper results.
+
+# ---- The four steering methods we compare ----------------------------------
+# These names MUST match src/blocks/__init__.py (the STEER_REGISTRY) and the
+# DESIGN_BRIEF.md §12 registry. We do NOT invent new names here.
+variants:
+  - naive_steer         # baseline (M3): off-manifold activation addition a <- a + s*d
+  - random_steer        # null/sanity baseline: add a RANDOM direction
+  - clamp_steer         # clamp the SAE feature to a fixed magnitude, no projection
+  - onmanifold_steer    # OURS: project the edit onto the top-r real-image subspace
+
+# ---- Where to write results ------------------------------------------------
+output_csv: "outputs/method_compare.csv"   # variant, off-manifold residual, CFS
+output_png: "outputs/method_compare.png"   # bar+scatter: residual vs CFS per variant

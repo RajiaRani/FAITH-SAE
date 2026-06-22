@@ -1,0 +1,40 @@
+# =============================================================================
+# .gitignore  --  FAITH-SAE  code/real_run/
+# Author: Rajia Rani  ()
+#
+# The real run REGENERATES every heavy artifact (activation shards, the trained
+# SAE, the manifold basis, result CSVs, and the figure PNGs). None of it belongs
+# in version control -- a single ImageNet epoch of patch activations is ~600 GB.
+# We track ONLY the directory placeholders (.gitkeep) so the tree exists on a
+# fresh clone; the pipeline fills the rest. See RUN_AT_SCALE.md (Storage).
+# =============================================================================
+
+# --- activation cache: shards + manifests (HUGE; stream/subset, never commit) -
+cache/*
+cache_smoke/
+cache_vit_s/
+cache_vit_b/
+cache_vit_l/
+cache_*/                  # per-size + cluster-patched cache dirs (CACHE_DIR_<size>)
+!cache/.gitkeep
+
+# --- pipeline outputs: sae.safetensors, U_r.npy, *.csv, fig*.png, FINDINGS.md -
+outputs/*
+outputs_smoke/
+outputs_vit_s/
+outputs_vit_b/
+outputs_vit_l/
+outputs_*/                # per-size output dirs + outputs_model_sweep/
+!outputs/.gitkeep
+
+# --- torchvision downloads (Food-101 / CIFAR-100) -----------------------------
+data/
+data_*/
+
+# --- the smoke path's unused placeholder data dirs (schema-only paths) --------
+_smoke_unused/
+
+# --- python / tooling cruft ---------------------------------------------------
+__pycache__/
+*.pyc
+.ipynb_checkpoints/

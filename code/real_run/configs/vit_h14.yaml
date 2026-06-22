@@ -1,0 +1,66 @@
+# =============================================================================
+# vit_h14.yaml  --  ViT-H/14 variant of the FAITH-SAE real run (the big one).
+# Author: Rajia Rani  ()
+#
+# Largest backbone we support. CLIP ViT-H/14, LAION-2B weights, ~632M params,
+# residual-stream width d=1280, 32 blocks, 16x16=256 patch tokens @224px. Use
+# this for the strongest representations (and the most expensive run); the SAE
+# dictionary and the SVD bank grow with d, so plan ~2x the ViT-L/14 wall-clock.
+# Same shared schema -- only dims/scale change.
+# -----------------------------------------------------------------------------
+# For research and educational purposes only.
+# =============================================================================
+
+backbone:
+  name: ViT-H-14
+  pretrained: laion2b_s32b_b79k   # open_clip LAION-2B ViT-H/14 checkpoint
+  layer: 28                 # late block of 32 (A5 ablation sweeps this)
+  token_type: patch
+  image_size: 224
+  device: cuda
+
+# Dataset sources + sizes documented in vit_l14.yaml (identical layouts).
+data:
+  imagenet_train_dir: /data/imagenet/train
+  ood:
+    imagenet_r_dir: /data/imagenet-r
+    imagenet_sketch_dir: /data/imagenet-sketch
+    imagenet_c_dir: /data/imagenet-c
+    objectnet_dir: /data/objectnet
+  batch_size: 160           # H/14 is heavy -> smaller image batch
+  num_workers: 8
+  max_images: null
+
+sae:
+  d_in: 1280                # = ViT-H/14 width
+  expansion: 32             # n_features = 32 * 1280 = 40960
+  k: 64                     # larger width -> a touch more sparsity budget
+  normalize: unit_meansquare
+  lr: 4.0e-4
+  warmup: 1000
+  token_budget: 400_000_000   # ~400M tokens (256 tokens/img -> ~1.56M img-passes)
+  batch_tokens: 8192
+  aux_k: 256
+  dead_window: 10_000_000
+  ckpt_every: 5000
+
+steering:
+  strength_grid: [0, 0.5, 1, 2, 4]
+  proj_rank_r: 640          # scaled to the larger width
+  bank_tokens: 2_000_000
+
+cfs:
+  n_probe_classes: 50
+  bootstrap_n: 2000
+
+ood:
+  levels: [clean, imagenet_r, imagenet_sketch, imagenet_c, objectnet]
+  severities: [1, 2, 3, 4, 5]
+
+paths:
+  cache_dir: ./cache_h14
+  out_dir: ./outputs_h14
+  sae_ckpt: ./outputs_h14/sae.safetensors
+  manifold_basis: ./outputs_h14/U_r.npy
+
+seed: 0

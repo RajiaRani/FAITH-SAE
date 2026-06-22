@@ -1,0 +1,25 @@
+# Milestone 5 (Evaluation: the full CFS metric) — ADDITIVE requirements only.
+#
+# The BASE requirements live in the project root:
+#   ../../requirements.txt   (torch, pyyaml, pytest, numpy)
+# Everything this milestone needs is already covered by that base PLUS:
+#   * scikit-learn  — used in step2 to train one LINEAR PROBE (LogisticRegression)
+#                     per concept (the "ruler that reads one concept off an
+#                     activation"), and to estimate the on-manifold subspace U_r
+#                     with PCA. These are the rulers the CFS metric reads.
+#   * scipy         — used in step3 for scipy.stats.spearmanr, the rank
+#                     correlation that scores MONOTONICITY (how smoothly the
+#                     concept readout rises as we turn the steering knob).
+#   * pandas        — used in step3/step4 to assemble and write the headline
+#                     table outputs/cfs_breakdown.csv.
+#   * matplotlib    — used in step4 to draw outputs/cfs_breakdown.png.
+#
+# On the provided /usr/bin/python3, torch 2.8, numpy, pyyaml, scikit-learn,
+# scipy, pandas, and matplotlib are all preinstalled, so you typically need to
+# install NOTHING.
+#
+# If you are on a fresh machine, install the base first, then these lines:
+scikit-learn>=1.3   # linear probes (LogisticRegression) + PCA for U_r (step2)
+scipy>=1.10         # scipy.stats.spearmanr -> MONOTONICITY (step3)
+pandas>=1.5         # assemble + write outputs/cfs_breakdown.csv (step3/step4)
+matplotlib>=3.5     # renders outputs/cfs_breakdown.png (step4)

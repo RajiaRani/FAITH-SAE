@@ -1,0 +1,7 @@
+variant,feature_id,monotonicity,specificity,sufficiency,offmanifold_residual,cfs
+naive_steer,122,1.0,0.6332,0.669,0.3311,0.7363
+naive_steer,118,1.0,0.642,0.7643,0.47,0.776
+naive_steer,135,1.0,0.7307,0.6798,0.3951,0.7813
+naive_steer,222,1.0,0.7611,0.6156,0.4322,0.7617
+naive_steer,179,1.0,0.7611,0.6798,0.2742,0.7926
+MEAN,-1,1.0,0.7056,0.6817,0.3805,0.7696

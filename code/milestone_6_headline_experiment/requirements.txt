@@ -1,0 +1,21 @@
+# Milestone 6 (HEADLINE: the OOD faithfulness sweep) — ADDITIVE requirements only.
+#
+# The BASE requirements live in the project root:
+#   ../../requirements.txt   (torch, pyyaml, pytest, numpy)
+# Everything this milestone needs is already covered by that base PLUS:
+#   * scikit-learn  — step2 estimates the FROZEN clean subspace U_r with PCA, and
+#                     trains the per-concept linear probes (the "rulers") with
+#                     LogisticRegression.
+#   * scipy         — step3 measures MONOTONICITY with scipy.stats.spearmanr (the
+#                     rank correlation between the steering knob and the readout).
+#   * pandas        — step3 assembles outputs/ood_cfs_sweep.csv; step4 reads it.
+#   * matplotlib    — step4 draws outputs/fig1_cfs_ood_sweep.png (headless / Agg).
+#
+# On the provided /usr/bin/python3, torch 2.8, numpy, pyyaml, scikit-learn, scipy,
+# pandas, and matplotlib are all preinstalled, so you typically install NOTHING.
+#
+# If you are on a fresh machine, install the base first, then these lines:
+scikit-learn>=1.3   # PCA of the clean bank -> frozen U_r + concept probes (step2)
+scipy>=1.10         # spearmanr for the monotonicity component (step3)
+pandas>=1.5         # builds/reads outputs/ood_cfs_sweep.csv (step3/step4)
+matplotlib>=3.5     # renders outputs/fig1_cfs_ood_sweep.png (step4)

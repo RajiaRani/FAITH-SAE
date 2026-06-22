@@ -1,0 +1,106 @@
+# =============================================================================
+# config.yaml  —  Milestone 5 (Evaluation: the full CFS metric) of FAITH-SAE
+# Author: Rajia Rani
+#
+# WHAT THIS FILE IS
+# -----------------
+# A config file is just a list of named settings (a "knobs sheet") that the
+# code reads at startup, so you can change behaviour WITHOUT editing Python.
+# Analogy: the dials on an oven. The recipe (the .py files) stays the same;
+# you only turn the dials here. Tiny example: set `n_knob_steps: 7` here and
+# every knob sweep below reads the concept 7 times instead of the default.
+#
+# GOLDEN RULE OF THIS PROJECT: every setting below is kept IDENTICAL across all
+# steering methods. The ONLY thing that differs between methods is the steering
+# method itself — a controlled experiment ("matched strength"). Milestone 5 then
+# MEASURES the three CFS components from the data for each method (it does NOT
+# read them from a lookup table — measuring them is the whole point).
+# =============================================================================
+
+seed: 0                 # Random seed = the starting number for the random-number
+                        # generator. Fixing it makes every run reproducible
+                        # (same dice rolls every time). Tiny example: seed 0 vs
+                        # seed 1 give two different but each-repeatable worlds.
+
+# ---- Backbone / activation shape -------------------------------------------
+dim: 64                 # Width of one activation vector (how many numbers
+                        # describe one image-patch). Real CLIP ViT-B/16 uses 768;
+                        # we use 64 so it runs instantly on a laptop CPU.
+n_patches: 16           # How many "patches" (little square tiles) per image.
+                        # A real ViT cuts an image into a grid of patches; here
+                        # it is just the number of activation vectors per item.
+d_model: 64             # = dim. The backbone's internal width. Kept equal to dim.
+
+# ---- The concept bank (target + off-target concepts) -----------------------
+# We plant SEVERAL named concepts into the activations. ONE is the TARGET we
+# steer; the rest are OFF-TARGET concepts that should NOT move (that is what
+# the SPECIFICITY component checks). Each concept is a fixed direction; an item
+# either has it (label 1) or not (label 0), so we can train a linear probe.
+n_concepts: 4           # how many concepts we plant and probe (1 target + 3 off).
+target_concept: 0       # which planted concept we steer (the others are off-target).
+bank_size: 2000         # how many labelled activations to train each probe on.
+concept_strength: 3.0   # how strongly a present concept is injected (signal size).
+noise_off_manifold: 1.0 # background ON-SHEET variation scale (the "everything else"
+                        # the model also represents); a smaller off-sheet wobble is
+                        # added on top so real data is not perfectly flat.
+true_manifold_rank: 8   # the planted SHEET dimension: real activations (and all
+                        # concept directions) live on an 8-D sheet inside the
+                        # 64-D space. This is what on-manifold steering projects
+                        # onto; the other 56 directions are the OFF-sheet region a
+                        # naive edit drifts into (causing specificity leakage).
+
+# ---- The on-manifold subspace (reused idea from milestone 4) ---------------
+# The "data manifold" is the thin sheet that REAL-image activations live on
+# inside the 64-dim space. on-manifold steering keeps only the part of an edit
+# that lies on that sheet. We estimate the sheet with PCA over the bank and keep
+# `manifold_rank` directions. (Milestone 4 teaches this in full; here we reuse it.)
+manifold_rank: 8        # r = how many estimated directions on-manifold keeps.
+                        # Set to the true sheet rank (8) so the projection cleanly
+                        # KEEPS the whole real-image sheet and DROPS the off-sheet
+                        # region a naive edit drifts into. (r much larger -> U_r
+                        # also spans off-sheet noise and on-manifold degenerates
+                        # toward naive; r much smaller -> the effect dies. This is
+                        # the A3 rank knee milestone 4 explores.)
+proj_rank: 8            # alias read by src/blocks onmanifold_steer (kept equal).
+
+# ---- Sparse Autoencoder (SAE) ----------------------------------------------
+sae_dim: 128            # Size of the SAE "dictionary" = how many concept switches
+                        # the SAE has. Larger than dim (over-complete).
+sae_type: topk          # 'topk' (keep only the k biggest switches) or 'l1'.
+topk_k: 8               # k = how many switches may be ON at once (the sparsity).
+
+# ---- The knob sweep (the heart of MONOTONICITY) ----------------------------
+# MONOTONICITY sweeps the steering knob s over a ladder of values and reads the
+# target concept each time. We score how smoothly/in-order the readout rises with
+# the Spearman rank correlation.
+steer_strength: 4.0     # s_max = the FULL knob value. SAME for every method.
+n_knob_steps: 6         # how many knob values to read between 0 and s_max
+                        # (e.g. 6 -> s = 0.0, 0.8, 1.6, 2.4, 3.2, 4.0).
+cohen_d_ample: 4.0      # SUFFICIENCY maps a Cohen's-d effect size of this size
+                        # to 1.0 (d~4 standard deviations apart is "ample").
+
+# ---- SAE training budget (kept tiny for the offline run) -------------------
+steps: 60               # gradient steps to train the toy SAE. Equal for every
+                        # variant (equal budget). Raise for sharper results.
+
+# ---- The five steering methods we compare ----------------------------------
+# Four are runtime steerers registered in src/blocks/__init__.py (the
+# STEER_REGISTRY). The fifth, `supervised_steer`, is the TCAV-style REFERENCE
+# direction (a label-trained concept direction, the gold a good unsupervised SAE
+# direction should approach). It is not a registry entry — step3 builds the
+# supervised direction empirically (the target probe's weight vector) and steers
+# with the naive mechanism along it.
+variants:
+  - supervised_steer    # TCAV-style label-trained reference direction (quality ceiling)
+  - onmanifold_steer    # OURS: project the edit onto the top-r real-image subspace
+  - clamp_steer         # clamp the SAE feature to a fixed magnitude, no projection
+  - naive_steer         # baseline (M3): off-manifold activation addition a <- a + s*d
+  - random_steer        # null/sanity baseline: add a RANDOM direction
+
+steer: onmanifold_steer # the model's DEFAULT steerer (used only when training the
+                        # toy SAE; step3 builds EACH method explicitly by name, so
+                        # this default does not bias the comparison).
+
+# ---- Where to write results ------------------------------------------------
+output_csv: "outputs/cfs_breakdown.csv"   # variant, monotonicity, specificity, sufficiency, cfs
+output_png: "outputs/cfs_breakdown.png"   # grouped-bar of the 3 components + CFS per method

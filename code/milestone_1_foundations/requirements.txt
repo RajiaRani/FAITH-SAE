@@ -1,0 +1,11 @@
+# Milestone 1 (Foundations) — ADDITIVE requirements only.
+#
+# The BASE requirements live in the project root:
+#   ../../requirements.txt   (torch, pyyaml, pytest, numpy)
+# Everything this milestone needs is already covered by that base PLUS matplotlib
+# (used by step5 to draw the CFS bar chart). On the provided /usr/bin/python3,
+# torch 2.8, numpy, pyyaml, and matplotlib are all preinstalled, so you typically
+# need to install NOTHING.
+#
+# If you are on a fresh machine, install the base first, then this line:
+matplotlib>=3.5    # only used to render outputs/milestone1_cfs.png in step5

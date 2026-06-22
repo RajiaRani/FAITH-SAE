@@ -1,0 +1,5 @@
+variant,offmanifold_residual
+naive_steer,0.9304
+random_steer,0.8939
+clamp_steer,0.9304
+onmanifold_steer,0.0

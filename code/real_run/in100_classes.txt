@@ -1,0 +1,26 @@
+# in100_classes.txt  --  the 100 ImageNet WordNet ids (wnids) that define IN-100.
+# FAITH-SAE real run.  Author: Rajia Rani  ()
+#
+# HOW TO FILL THIS IN (REAL RUN):
+#   IN-100 is a fixed 100-class SUBSET of ImageNet-1k. data_real.py filters the
+#   IN-1k ImageFolder at $IMAGENET_DIR down to exactly the wnids listed here.
+#   Put ONE wnid per line (e.g. n01440764). Blank lines and #-comments ignored.
+#
+#   The de-facto-standard IN-100 split (Tian et al., "Contrastive Multiview
+#   Coding", 2019) ships its 100 wnids as a text file in many self-supervised
+#   repos -- e.g. the CMC / PyContrast / solo-learn repos all carry an
+#   `imagenet100.txt`. Copy those 100 wnids below (replacing the example lines),
+#   OR pick any 100 wnids you like -- the only requirement is that each line is a
+#   subdir name that EXISTS under $IMAGENET_DIR.
+#
+# If this file is left with FEWER than 100 wnids (or all commented out),
+# data_real falls back to the full IN-1k class set for the 'in100' rung, so the
+# pipeline still runs -- it just won't be a true 100-class subset until you fill
+# this in. Verify with:  wc -l < in100_classes.txt  (expect ~100 uncommented).
+#
+# --- example placeholder wnids (REPLACE with the real IN-100 split) ----------
+# n01440764
+# n01443537
+# n01484850
+# n01491361
+# n01494475

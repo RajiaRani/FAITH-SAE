@@ -1,0 +1,65 @@
+# =============================================================================
+# config.yaml  —  Milestone 1 (Foundations) of FAITH-SAE
+# Author: Rajia Rani
+#
+# WHAT THIS FILE IS
+# -----------------
+# A config file is just a list of named settings (a "knobs sheet") that the
+# code reads at startup, so you can change behaviour WITHOUT editing Python.
+# Analogy: the dials on an oven. The recipe (the .py files) stays the same;
+# you only turn the dials here. Tiny example: set `steer_strength: 4.0` here and
+# every script that reads this file pushes the steering knob to 4.0.
+#
+# GOLDEN RULE OF THIS PROJECT: every setting below is kept IDENTICAL across all
+# four steering methods. That way the ONLY thing that differs between methods is
+# the steering method itself — a controlled experiment ("matched strength").
+# =============================================================================
+
+seed: 0                 # Random seed = the starting number for the random-number
+                        # generator. Fixing it makes every run reproducible
+                        # (same dice rolls every time). Tiny example: seed 0 vs
+                        # seed 1 give two different but each-repeatable worlds.
+
+# ---- Backbone / activation shape -------------------------------------------
+dim: 64                 # Width of one activation vector (how many numbers
+                        # describe one image-patch). Real CLIP ViT-B/16 uses 768;
+                        # we use 64 so it runs instantly on a laptop CPU.
+n_patches: 16           # How many "patches" (little square tiles) per image.
+                        # A real ViT cuts an image into a grid of patches; here
+                        # it is just the number of activation vectors per item.
+d_model: 64             # = dim. The backbone's internal width. Kept equal to dim.
+
+# ---- Sparse Autoencoder (SAE) ----------------------------------------------
+sae_dim: 128            # Size of the SAE "dictionary" = how many concept switches
+                        # the SAE has. Larger than dim (over-complete) so each
+                        # concept can get its own switch. Real runs use thousands.
+sae_type: topk          # 'topk' (keep only the k biggest switches) or 'l1'.
+topk_k: 8               # k = how many switches may be ON at once (the sparsity).
+                        # Small k => only a few concepts active per patch =>
+                        # cleaner, more interpretable switches. Tiny example:
+                        # k=8 out of 128 switches means >=120 are forced to zero.
+
+# ---- Steering knobs --------------------------------------------------------
+proj_rank: 16           # r = how many "real-image directions" the on-manifold
+                        # method is allowed to use. Small r over-constrains the
+                        # edit (effect dies); large r lets it drift off-manifold.
+                        # This is the core design knob (ablation A3 in the brief).
+steer_strength: 4.0     # s = how hard we turn the concept knob. SAME s for every
+                        # method, so the comparison is fair (matched strength).
+
+# ---- SAE training budget (kept tiny for the smoke run) ---------------------
+steps: 40               # How many gradient steps to train the toy SAE. Equal for
+                        # every variant (equal budget). Raise for sharper results.
+
+# ---- The four steering methods we compare ----------------------------------
+# These names MUST match src/blocks/__init__.py (the STEER_REGISTRY) and the
+# DESIGN_BRIEF.md §12 registry. We do NOT invent new names here.
+variants:
+  - naive_steer         # baseline: off-manifold activation addition  a <- a + s*d
+  - random_steer        # null/sanity baseline: add a RANDOM direction
+  - clamp_steer         # clamp the SAE feature to a fixed magnitude, no projection
+  - onmanifold_steer    # OURS: project the edit onto the top-r real-image subspace
+
+# ---- Where to write results ------------------------------------------------
+output_csv: "outputs/milestone1_cfs.csv"   # per-variant CFS table
+output_png: "outputs/milestone1_cfs.png"   # bar chart of CFS per variant

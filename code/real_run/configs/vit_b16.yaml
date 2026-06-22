@@ -1,0 +1,66 @@
+# =============================================================================
+# vit_b16.yaml  --  ViT-B/16 variant of the FAITH-SAE real run.
+# Author: Rajia Rani  ()
+#
+# Smaller / cheaper backbone than ViT-L/14 (the DESIGN_BRIEF names ViT-B/16 as
+# the reference backbone for the ablations, esp. A5 layer/token choice). ~86M
+# params, residual-stream width d=768, 12 blocks, 14x14=196 patch tokens @224px.
+# Same shared schema as vit_l14.yaml -- only the dims/scale change. Good for a
+# faster end-to-end real run when an A100/H100 is time-budgeted.
+# -----------------------------------------------------------------------------
+# For research and educational purposes only.
+# =============================================================================
+
+backbone:
+  name: ViT-B-16
+  pretrained: laion2b_s34b_b88k   # open_clip LAION-2B ViT-B/16 checkpoint
+  layer: 9                  # late-middle block of 12 (A5 ablation sweeps this)
+  token_type: patch
+  image_size: 224
+  device: cuda
+
+# Dataset sources + sizes documented in vit_l14.yaml (identical layouts).
+data:
+  imagenet_train_dir: /data/imagenet/train
+  ood:
+    imagenet_r_dir: /data/imagenet-r
+    imagenet_sketch_dir: /data/imagenet-sketch
+    imagenet_c_dir: /data/imagenet-c
+    objectnet_dir: /data/objectnet
+  batch_size: 384           # B/16 is lighter -> larger image batch fits
+  num_workers: 8
+  max_images: null
+
+sae:
+  d_in: 768                 # = ViT-B/16 width
+  expansion: 32             # n_features = 32 * 768 = 24576
+  k: 32
+  normalize: unit_meansquare
+  lr: 4.0e-4
+  warmup: 1000
+  token_budget: 200_000_000   # ~200M tokens (196 tokens/img -> ~1.02M imgs)
+  batch_tokens: 8192
+  aux_k: 256
+  dead_window: 10_000_000
+  ckpt_every: 5000
+
+steering:
+  strength_grid: [0, 0.5, 1, 2, 4]
+  proj_rank_r: 384          # scaled to the smaller width
+  bank_tokens: 2_000_000
+
+cfs:
+  n_probe_classes: 50
+  bootstrap_n: 2000
+
+ood:
+  levels: [clean, imagenet_r, imagenet_sketch, imagenet_c, objectnet]
+  severities: [1, 2, 3, 4, 5]
+
+paths:
+  cache_dir: ./cache_b16
+  out_dir: ./outputs_b16
+  sae_ckpt: ./outputs_b16/sae.safetensors
+  manifold_basis: ./outputs_b16/U_r.npy
+
+seed: 0

@@ -1,0 +1,3 @@
+# Keep this directory under version control even though its heavy contents
+# (sae.safetensors, U_r.npy, *.csv, fig*.png) are git-ignored and regenerated
+# by the real-run pipeline. See ../run_all_real.sh and ../RUN_AT_SCALE.md.

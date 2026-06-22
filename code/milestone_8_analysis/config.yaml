@@ -1,0 +1,108 @@
+# =============================================================================
+# config.yaml  —  Milestone 8 (Analysis) of FAITH-SAE
+# Author: Rajia Rani
+# For research and educational purposes only.
+#
+# WHAT THIS FILE IS
+# -----------------
+# A config file is just a list of named settings (a "knobs sheet") that the
+# code reads at startup, so you can change behaviour WITHOUT editing Python.
+# Analogy: the dials on an oven. The recipe (the .py files) never changes; you
+# only turn the dials here. Tiny example: set `n_boot: 2000` and the bootstrap
+# step resamples the concepts exactly 2000 times.
+#
+# GOLDEN RULE: every setting below is kept IDENTICAL across all five steering
+# methods. The ONLY thing that differs between methods is the steering method
+# itself — a controlled experiment ("matched strength"). That is what lets us
+# say a CFS gap is caused by the method and nothing else.
+# =============================================================================
+
+seed: 0                  # Random seed = the starting number for the random-number
+                         # generator. Fixing it makes every run reproducible (same
+                         # dice every time), INCLUDING the bootstrap resamples — so
+                         # your confidence intervals come out the same on re-run.
+
+# ---- The synthetic "real-image" activation bank (regenerated locally) ------
+# An "activation" is the list of numbers a neural network produces inside itself
+# when it looks at one input. Here we MAKE UP such numbers (synthetic) so the
+# milestone is fully offline. The bank deliberately lives on a thin LOW-rank
+# sheet (the "manifold") inside the dim=64 space, with a handful of planted
+# concept directions injected — so naive off-manifold steering has something
+# real to leak off of, and on-manifold steering has a sheet to project onto.
+dim: 64                  # Length of each activation vector. Real CLIP ViT-B/16
+                         # uses 768; we use 64 so it runs in seconds on a laptop.
+d_model: 64              # = dim. The backbone's internal width (kept equal to dim).
+n_patches: 16            # How many activation vectors ("patches") per image.
+n_images: 512            # How many synthetic "images" in the bank.
+manifold_dim: 24         # The true sheet dimension the bank lives on (ground truth).
+off_manifold_noise: 0.05 # Tiny Gaussian wobble pushing points slightly off-sheet.
+n_concepts: 6            # How many planted concept directions live in the bank.
+
+# ---- The TopK Sparse Autoencoder (trained locally in step1) ----------------
+sae_dim: 256             # Dictionary size = how many "concept switches" the SAE
+                         # has. Overcomplete (256 > 64) so each concept gets its
+                         # own switch instead of cramming many together.
+sae_type: topk           # 'topk' = keep only the k biggest switches per vector.
+topk_k: 8                # k = how many switches may be ON at once (sparsity).
+steps: 400               # Gradient steps to train the toy SAE (seconds on CPU).
+lr: 0.003                # Learning rate (step size of each update).
+batch: 32                # Bank rows seen per training update.
+
+# ---- Concept selection -----------------------------------------------------
+# The field claims only ~10-15% of SAE features steer reliably, so we score each
+# discovered feature for how cleanly it matches a planted concept and keep the
+# best ones as our "testable concept set". The bootstrap then resamples THIS set.
+n_select: 24             # How many top-scoring concepts to keep as testable. The
+                         # bootstrap needs a decent-sized set so its CIs are
+                         # meaningful; 24 gives a healthy per-method spread.
+
+# ---- The five steering methods we compare ----------------------------------
+# These names MUST match src/blocks/__init__.py (the STEER_REGISTRY) and the
+# DESIGN_BRIEF.md §12 registry, PLUS the supervised TCAV-style reference (which
+# steers along the planted ground-truth direction — the label-expensive "gold").
+# We do NOT invent new names here.
+variants:
+  - supervised_steer     # TCAV-style gold reference: steer the planted direction
+  - onmanifold_steer     # OURS: project the edit onto the top-r real-image subspace
+  - clamp_steer          # clamp the SAE feature to a fixed magnitude, no projection
+  - naive_steer          # baseline: off-manifold activation addition a <- a + s*d
+  - random_steer         # null/sanity baseline: add a RANDOM direction
+
+# ---- Steering knobs (matched across every method) --------------------------
+steer_strength: 4.0      # s = how hard we turn the concept knob. SAME for every
+                         # method, so the comparison is fair (matched strength).
+proj_rank: 16            # r = how many top real-image directions the on-manifold
+                         # method keeps (the columns of U_r). The core design knob.
+n_knob_steps: 6          # How many knob settings (0..s) we sweep to measure the
+                         # monotonicity of each concept's readout.
+
+# ---- The OOD shift rungs (the headline sweep) ------------------------------
+# A "shift rung" is a named level of distribution shift, from clean (in-distribution)
+# to harder out-of-distribution. We SIMULATE shift offline by corrupting the test
+# activations a little more at each rung: blur the sheet + add off-sheet noise, so
+# the very subspace on-manifold steering relies on stops describing the test data.
+# Real runs replace these with clean ImageNet -> R -> Sketch -> C-1..5 -> ObjectNet.
+shift_rungs:
+  - {name: "clean",     noise: 0.00}   # in-distribution: no extra corruption
+  - {name: "ImgNet-R",  noise: 0.35}   # rendition/abstraction shift (mild)
+  - {name: "Sketch",    noise: 0.70}   # texture removed (harder)
+  - {name: "C-3",       noise: 1.05}   # mid corruption severity
+  - {name: "C-5",       noise: 1.55}   # heavy corruption severity
+  - {name: "ObjectNet", noise: 2.10}   # hardest real-world shift (floor)
+
+# ---- The bootstrap (the statistics engine of this milestone) ---------------
+n_boot: 2000             # How many times we resample the concept set with
+                         # replacement to build the confidence interval. 2000 is a
+                         # standard, stable choice; more = smoother CI edges.
+ci_pct: 95               # Confidence level for the interval (95% = the standard
+                         # "we'd bracket the true mean 95 runs out of 100" band).
+usability_floor: 0.50    # The CFS "usability floor": below this a concept knob is
+                         # considered too unfaithful to trust. The collapse knee is
+                         # the first shift rung where a method's mean CFS dips below.
+
+# ---- Where to write results ------------------------------------------------
+per_concept_csv: "outputs/per_concept_cfs.csv"  # one row per (variant, shift, concept)
+bootstrap_csv:   "outputs/bootstrap_ci.csv"     # variant, mean_cfs, ci_low, ci_high
+fig1_png:        "outputs/fig1_cfs_ood_sweep.png"   # headline: CFS vs shift + CI band
+fig7_png:        "outputs/fig7_by_method_bar.png"   # CFS by method + bootstrap CI bars
+findings_md:     "FINDINGS.md"                   # the plain-language paper text

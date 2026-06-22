@@ -1,0 +1,29 @@
+# FAITH-SAE small-model config.
+# Keep these IDENTICAL across variants so only the STEERING METHOD changes;
+# every variant is compared at the same matched steering strength + budget.
+seed: 0
+dim: 64                  # backbone activation dim (real: CLIP ViT-B/16 width 768)
+n_patches: 16            # tokens per item (real: ViT patch grid; TODO M2)
+d_model: 64              # = dim (backbone width)
+sae_dim: 256             # SAE dictionary size (overcomplete)
+n_heads: 4               # (unused stub; kept for config-shape parity)
+n_layers: 2              # (unused stub)
+steps: 200               # raise for real runs; equal budget across variants
+
+# SAE + steering knobs (brief §12).
+sae_type: topk           # A1 ablation: topk vs l1
+topk_k: 8                # A2: sparsity level
+proj_rank: 16            # r: on-manifold projection rank (A3 core knob)
+steer_strength: 4.0      # s: matched steering strength across all variants
+concept_select_thresh: 0.0   # A4: well-defined-concept filter (TODO M2)
+backbone_layer: -1       # A5: which ViT layer (TODO M2)
+token_type: patch        # A5: patch vs cls (TODO M2)
+
+output_csv: "results/metrics_all.csv"
+
+# Steering methods to compare (names registered in src/blocks/__init__.py).
+variants:
+  - naive_steer          # baseline, ships in base (off-manifold activation add)
+  - random_steer         # null/sanity baseline
+  - clamp_steer          # raw clamp, no projection
+  - onmanifold_steer     # ours: project onto top-r real-image subspace

@@ -1,0 +1,158 @@
+# =============================================================================
+# config.yaml  —  Milestone 6 (HEADLINE: the OOD faithfulness sweep) of FAITH-SAE
+# Author: Rajia Rani
+#
+# WHAT THIS FILE IS
+# -----------------
+# A config file is just a list of named settings (a "knobs sheet") that the
+# code reads at startup, so you can change behaviour WITHOUT editing Python.
+# Analogy: the dials on an oven. The recipe (the .py files) stays the same;
+# you only turn the dials here. Tiny example: set `n_boot: 300` here and every
+# bootstrap confidence interval below is built from 300 resamples instead.
+#
+# GOLDEN RULE OF THIS PROJECT: every setting below is kept IDENTICAL across both
+# steering methods AND across every rung of the shift ladder. The ONLY things
+# that change are (a) the steering method and (b) how far out of distribution the
+# activations have been pushed. That makes the CFS-vs-shift curve a controlled
+# experiment: any drop in CFS is caused by the shift, not by a moved goalpost.
+#
+# THE HEADLINE QUESTION (RQ3): does the faithfulness we measured on CLEAN images
+# SURVIVE as the images go out of distribution — and where does it COLLAPSE?
+# Milestone 6 MEASURES (never looks up) CFS at every rung for on-manifold vs
+# naive and draws the answer.
+# =============================================================================
+
+seed: 0                 # Random seed = the starting number for the random-number
+                        # generator. Fixing it makes every run reproducible
+                        # (same dice rolls every time). Tiny example: seed 0 vs
+                        # seed 1 give two different but each-repeatable worlds.
+
+# ---- Backbone / activation shape -------------------------------------------
+dim: 64                 # Width of one activation vector (how many numbers
+                        # describe one image-patch). Real CLIP ViT-B/16 uses 768;
+                        # we use 64 so it runs instantly on a laptop CPU.
+n_patches: 16           # How many "patches" (little square tiles) per image.
+                        # A real ViT cuts an image into a grid of patches; here
+                        # it is just the number of activation vectors per item.
+d_model: 64             # = dim. The backbone's internal width. Kept equal to dim.
+
+# ---- The CLEAN concept bank (target + off-target concepts) ------------------
+# We plant SEVERAL named concepts into the CLEAN activations. ONE is the TARGET
+# we steer; the rest are OFF-TARGET concepts that should NOT move (that is what
+# the SPECIFICITY component checks). Each concept is a fixed direction; an item
+# either has it (label 1) or not (label 0), so we can train a linear probe.
+n_concepts: 6           # how many concepts we plant and probe (1 target + 5 off).
+                        # More off-target concepts -> a steadier bootstrap CI over
+                        # concepts (the brief asks for CIs over concepts).
+target_concept: 0       # which planted concept we steer (the others are off-target).
+bank_size: 2400         # how many CLEAN labelled activations to train probes on.
+concept_strength: 2.0   # how strongly a present concept is injected (signal size).
+                        # Sets the natural spread of the concept readout; the knob's
+                        # effect (steer_strength) is what must overcome it for a high
+                        # Cohen's-d sufficiency, so we keep this modest.
+noise_on_manifold: 1.0  # background ON-SHEET variation scale (the "everything else"
+                        # the model also represents on clean images).
+noise_off_manifold: 0.15  # tiny off-sheet wobble on CLEAN data (no real data is
+                          # perfectly flat). The shift ladder GROWS this later.
+true_manifold_rank: 8   # the planted CLEAN SHEET dimension: clean activations
+                        # (and all concept directions) live on an 8-D sheet inside
+                        # the 64-D space. on-manifold steering projects onto THIS
+                        # clean sheet; the OOD ladder pushes activations OFF it.
+
+# ---- The shared OFF-sheet STYLE subspace (the honest collision point) -------
+# Each concept direction has a small OFF-sheet SLIVER, and the OOD shift's "style"
+# push, BOTH living in the SAME small off-sheet subspace S. That overlap is the
+# mechanism: the off-sheet directions a NAIVE edit injects energy into are exactly
+# the ones the shift floods with junk -- so naive's wasted off-sheet strength
+# collides with the shift and its readout corrupts FASTER. on-manifold puts ALL
+# its strength ON the clean sheet (it trims the sliver), so it is insulated.
+n_style_dirs: 6         # dimension of the shared off-sheet style subspace S.
+concept_offsheet_frac: 0.45  # fraction of each concept direction that lies OFF
+                        # the clean sheet (in S). Bigger -> naive wastes more of
+                        # its strength off-sheet and collides harder with the shift;
+                        # on-manifold (which trims it) keeps its full ON-sheet effect.
+
+# ---- The CLEAN on-manifold subspace (frozen here; the crux of OOD collapse) -
+# We estimate the on-manifold subspace U_r with PCA on the CLEAN bank ONCE, then
+# FREEZE it and reuse it at every rung. This is faithful to real life: you can
+# only estimate the manifold on the clean data you have. WHY THIS MATTERS: as the
+# images shift, their activations move OFF the clean sheet U_r describes, so the
+# projection P_M = U_r U_r^T no longer matches them -- that mismatch is exactly
+# how an on-manifold steer faithful on clean images can COLLAPSE under shift.
+manifold_rank: 8        # r = how many estimated CLEAN directions on-manifold keeps.
+                        # Set to the true clean sheet rank (8) so the projection
+                        # cleanly KEEPS the whole clean sheet and DROPS off-sheet.
+proj_rank: 8            # alias read by src/blocks onmanifold_steer (kept equal).
+
+# ---- Sparse Autoencoder (SAE) ----------------------------------------------
+sae_dim: 128            # Size of the SAE "dictionary" = how many concept switches
+                        # the SAE has. Larger than dim (over-complete).
+sae_type: topk          # 'topk' (keep only the k biggest switches) or 'l1'.
+topk_k: 8               # k = how many switches may be ON at once (the sparsity).
+steps: 60               # gradient steps to train the toy SAE (equal budget).
+
+# ---- The knob sweep (the heart of MONOTONICITY) ----------------------------
+# MONOTONICITY sweeps the steering knob s over a ladder of values and reads the
+# target concept each time. We score how smoothly/in-order the readout rises with
+# the Spearman rank correlation. SAME sweep at every rung and for both methods.
+steer_strength: 8.0     # s_max = the FULL knob value. SAME for every method. Large
+                        # enough that, on CLEAN data, the knob swings the readout by
+                        # ~ several std-devs (a high Cohen's-d sufficiency -> the
+                        # curves start high near the clean ceiling).
+n_knob_steps: 6         # how many knob values to read between 0 and s_max
+                        # (e.g. 6 -> s = 0.0, 1.6, 3.2, 4.8, 6.4, 8.0).
+cohen_d_ample: 4.0      # SUFFICIENCY maps a Cohen's-d effect size of this size
+                        # to 1.0 (d~4 standard deviations apart is "ample").
+
+# ---- The OOD SHIFT LADDER (the headline x-axis) -----------------------------
+# We SIMULATE the real ImageNet shift ladder offline by progressively corrupting
+# the clean activation bank, ONE setting per rung. Each rung adds two things that
+# grow as we go further out of distribution:
+#   * gauss : extra Gaussian noise across all 64 directions (random degradation,
+#             like ImageNet-C corruptions: blur, noise, weather, ...).
+#   * style : an off-manifold ROTATION/STYLE push that rotates activations partly
+#             OFF the clean sheet (like ImageNet-R renditions / Sketch texture
+#             removal: same object, different "look", landing off the clean
+#             manifold the model learned on photos).
+# severity_index orders the rungs 0..N for the x-axis. The names match the real
+# benchmark ladder in DESIGN_BRIEF.md so the offline curve maps 1:1 onto fig1.
+# REAL RUN (M6): replace this synthetic ladder with the real datasets (see the
+# note at the bottom of each step file).
+shift_ladder:
+  - {name: clean,             severity_index: 0, gauss: 0.00, style: 0.00}  # in-distribution reference
+  - {name: imagenet_r,        severity_index: 1, gauss: 0.30, style: 0.45}  # rendition / abstraction shift
+  - {name: imagenet_sketch,   severity_index: 2, gauss: 0.45, style: 0.70}  # texture/style removed
+  - {name: imagenet_c_sev1,   severity_index: 3, gauss: 0.60, style: 0.35}  # corruption severity 1
+  - {name: imagenet_c_sev2,   severity_index: 4, gauss: 0.95, style: 0.55}  # corruption severity 2
+  - {name: imagenet_c_sev3,   severity_index: 5, gauss: 1.40, style: 0.80}  # corruption severity 3
+  - {name: imagenet_c_sev4,   severity_index: 6, gauss: 1.95, style: 1.10}  # corruption severity 4
+  - {name: imagenet_c_sev5,   severity_index: 7, gauss: 2.60, style: 1.45}  # corruption severity 5 (worst C)
+  - {name: objectnet,         severity_index: 8, gauss: 2.40, style: 1.95}  # real-world pose/background shift
+
+# A CFS "usability floor": below this, we call the concept no-longer-faithful.
+# The collapse knee is the first rung whose CFS crosses BELOW this floor.
+cfs_floor: 0.50
+
+# ---- Bootstrap confidence interval (over concepts) -------------------------
+# A bootstrap CI answers "how sure are we of this CFS, given we only measured a
+# handful of concepts?" by resampling the per-concept scores WITH replacement many
+# times and reading the spread of the resampled means. (Taught from zero in step3.)
+n_boot: 400             # how many bootstrap resamples (more -> smoother CI band).
+ci_pct: 90              # the central CI percentage (90 -> 5th..95th percentile band).
+
+# ---- The TWO steering methods this headline contrasts ----------------------
+# RQ3 contrasts OURS against the main competitor across the whole ladder. (The
+# other baselines were already compared on clean data in milestone 5; here the
+# focus is the OOD curve, so we plot the two endpoints of the method spectrum.)
+# Names MUST match src/blocks/__init__.py (the STEER_REGISTRY) + DESIGN_BRIEF §12.
+variants:
+  - onmanifold_steer    # OURS: project the edit onto the top-r CLEAN real-image subspace
+  - naive_steer         # baseline (M3): off-manifold activation addition a <- a + s*d
+
+steer: onmanifold_steer # the model's DEFAULT steerer (used only when training the
+                        # toy SAE; step3 builds EACH method explicitly by name, so
+                        # this default does not bias the comparison).
+
+# ---- Where to write results ------------------------------------------------
+output_csv: "outputs/ood_cfs_sweep.csv"        # shift_level, severity_index, variant, cfs, offmanifold_residual (+ CI, components)
+output_png: "outputs/fig1_cfs_ood_sweep.png"   # HEADLINE: CFS vs shift severity, both methods, knee marked, CI band
